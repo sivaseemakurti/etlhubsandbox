@@ -1,0 +1,63 @@
+{
+	"name": "BAL_GEO_DIM001",
+	"properties": {
+		"activities": [
+			{
+				"name": "TMF_GEO",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "with\n\t-- This sub query gets the limits of the data that will be processed\n\tFIL as (\n\t\tselect\n\t\t\tETL_EXCTN_ID\n\t\tfrom\n\t\t\tPGMPDM.[ZAUX_ETL_EXCTN]\n\t\twhere\n\t\t\tIS_CURR_IND = 'Y'\n\t),\n\t\n\t-- This subquery gets the JOB ID. Returns -1 is the value is unknown\n\tJOB as (\n\t\tselect\n\t\t\tcoalesce(max(ETL_JOB_ID), -1) as ETL_JOB_ID\n\t\tfrom\n\t\t\tPGMPDM.ZAUX_ETL_JOBS\n\t\twhere\n\t\t\tETL_JOB_NM = '#DSJobName#'\t\t\n\t),\n\t\n\t-- This subquery gets the SRC_SYS_ID. Returns -1 is the value is unknown\n\tSYS as (\n\t\tselect\n\t\t\tcoalesce(max(SRC_SYS_DIM_UID), -1) as SRC_SYS_DIM_UID\n\t\tfrom\n\t\t\tPGMPDM.SRC_SYS_DIM\n\t\twhere\n\t\t\tSRC_SYS_CD = 'TMF'\t\t\t\n\t)\n\t\n\t\n\n\nselect\n\tG.GEO_DIM_UID,\n\tG.IOT_RGN_CD,\n\tG.IOT_RGN_NM,\n\tG.IMT_RGN_CD,\n\tG.IMT_SRGN_NM,\n\tG.SRGN_CD,\n\tG.SRGNCTRY_CD,\n\tG.SRGNCTRY_NM,\n\tG.IOTSORT_NUM,\n\tG.GEO_CD,\n\tG.GEO_TYP_CD,\n\tG.GMR_RGN_CD,\n\tG.GMR_RGN_NM,\n\tG.IOT_SHORT_NM,\n\tG.IMT_SHORT_NM,\n\tJOB.ETL_JOB_ID,\n\tFIL.ETL_EXCTN_ID,\n\tSYS.SRC_SYS_DIM_UID\nfrom\n\tPGMPDM.GEO_DIM_TMF G\n\tleft join\n\tJOB\n\ton 1 = 1\n\tleft join\n\tFIL\n\ton 1 = 1\n\tleft join\n\tSYS\n\ton 1 = 1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "AzureSqlTable3",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "dl_tgt_geo",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2022-06-08T10:03:41Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,149 @@
+{
+	"name": "Notebook 4",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "405445b7-1887-422a-991e-e29084333dc4"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"#import required modules\r\n",
+					"from pyspark import SparkConf, SparkContext , SQLContext\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"from pyspark.sql import SQLContext\r\n",
+					" \r\n",
+					"#Create spark configuration object\r\n",
+					"conf = SparkConf()\r\n",
+					"conf.setMaster(\"local\").setAppName(\"My app\")\r\n",
+					" \r\n",
+					"#Create spark context and sparksession\r\n",
+					"sc = SparkContext.getOrCreate(conf=conf)\r\n",
+					"spark = SparkSession(sc)\r\n",
+					"#set variable to be used to connect the database\r\n",
+					"database = \"sqldb-etlhub-confirmed\"\r\n",
+					"table = \"DBXDH.DHTS_SELL_CYCLE\"\r\n",
+					"user = \"sqladminuser\"\r\n",
+					"password  = \"try2find$5\"\r\n",
+					" \r\n",
+					"#read table data into a spark dataframe\r\n",
+					"jdbcDF = spark.read.format(\"jdbc\") \\\r\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName={database};\") \\\r\n",
+					"    .option(\"dbtable\", table) \\\r\n",
+					"    .option(\"user\", user) \\\r\n",
+					"    .option(\"password\", password) \\\r\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\r\n",
+					"    .load()\r\n",
+					"#show the data loaded into dataframe\r\n",
+					"#jdbcDF.show()\r\n",
+					"\r\n",
+					"%%sql\r\n",
+					"select * from DBXDH.DHTS_SELL_CYCLE\r\n",
+					"\r\n",
+					"#sqlContext.sql(select * from DBXDH.DHTS_SELL_CYCLE)\r\n",
+					" #print(\"update successful\")\r\n",
+					"\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession \r\n",
+					"from pyspark.sql.types import * \r\n",
+					"from pyspark.sql.functions import when\r\n",
+					"from pyspark.sql.context import SQLContext\r\n",
+					"\r\n",
+					"# Primary storage info \r\n",
+					"account_name = 'adls4fsoetlhubdevuseast' # fill in your primary account name \r\n",
+					"container_name = 'project' # fill in your container name \r\n",
+					"relative_path = '/' # fill in your relative folder path \r\n",
+					"\r\n",
+					"adls_path = 'abfss://%s@%s.dfs.core.windows.net%s' % (container_name, account_name, relative_path) \r\n",
+					"#adls_path='https://adls4fsoetlhubdevuseast.dfs.core.windows.net/project/sell_cycle_2022.csv'\r\n",
+					"print('Primary storage account path: ' + adls_path) \r\n",
+					"\r\n",
+					"# Read a csv file \r\n",
+					"csv_path = adls_path + 'sell_cycle_2022.csv' \r\n",
+					"#csv_path='https://adls4fsoetlhubdevuseast.blob.core.windows.net/project/sell_cycle_2022.csv'\r\n",
+					"df_csv = spark.read.csv(csv_path, header = 'true')\r\n",
+					"#df_csv.show(20,False)\r\n",
+					"\r\n",
+					"#set variable to be used to connect the database\r\n",
+					"database = \"sqldb-etlhub-confirmed\"\r\n",
+					"table = \"DBXDH.DHTS_SELL_CYCLE\"\r\n",
+					"user = \"sqladminuser\"\r\n",
+					"password  = \"try2find$5\"\r\n",
+					" \r\n",
+					"sqlContext.sql(\"select * from DBXDH.DHTS_SELL_CYCLE\")\r\n",
+					"#sqlContext.sql(\"select * from DBXDH.DHTS_SELL_CYCLE\")\r\n",
+					" #print(\"update successful\")"
+				],
+				"attachments": null,
+				"execution_count": 33
+			}
+		]
+	}
+}

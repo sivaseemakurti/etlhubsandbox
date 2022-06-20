@@ -1,0 +1,30 @@
+{
+	"name": "dsAzureSqlDBEtlhubGenericDimension",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asdb_etlhub_confirmed",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"DimTableName1": {
+				"type": "String",
+				"defaultValue": "EnterDimensionTableName"
+			},
+			"Key1": {
+				"type": "string",
+				"defaultValue": "'key'"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "DBXDH",
+			"table": {
+				"value": "@dataset().DimTableName1",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,107 @@
+{
+	"name": "Notebook 3",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "b641cdfd-41dd-4bc0-8071-55a0c4528a89"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from azure.storage.blob import BlobClient\r\n",
+					"import pandas as pd\r\n",
+					"import pyodbc\r\n",
+					"from io import StringIO\r\n",
+					"from pyspark.sql.functions import md5, concat_ws\r\n",
+					"from sqlite3 import connect\r\n",
+					"conn = connect(':memory:')\r\n",
+					"columns = [\"SIEBEL_SALES_STAGE_NAME\",\"SSM_STEP_NO\",\"SSM_STEP_NAME\"]\r\n",
+					"sas_url = \"https://adls4fsoetlhubdevuseast.blob.core.windows.net/project/sell_cycle.csv?sp=r&st=2022-05-11T09:48:50Z&se=2022-05-11T17:48:50Z&spr=https&sv=2020-08-04&sr=c&sig=ScsDhYGM4HWdCD8kMSMmLfY7Pex8jvmc02LvGatfwPI%3D\"\r\n",
+					"blob_client = BlobClient.from_blob_url(sas_url)\r\n",
+					"blob_data = blob_client.download_blob()\r\n",
+					"df = pd.read_csv(StringIO(blob_data.content_as_text()))\r\n",
+					"#print(df)\r\n",
+					"sell_cycleDF=spark.createDataFrame(df)\r\n",
+					"col_list=[]\r\n",
+					"for i in sell_cycleDF.columns:\r\n",
+					"    col_list.append(i)\r\n",
+					"    #print (col_list)\r\n",
+					"sell_cyclenkDF = sell_cycleDF.withColumn(\"nk_hash\",md5(\"SIEBEL_SALES_STAGE_CODE\"))\r\n",
+					"sell_cyclecolhashDF = sell_cyclenkDF.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\r\n",
+					"#sell_cyclecolhashDF.show()\r\n",
+					"sell_cyclecolhashDF.createOrReplaceTempView(\"sellcyclesrc\")\r\n",
+					"server = 'sqlserver-kyn-001494-dev-eus-001.database.windows.net' \r\n",
+					"database = 'sqldb-etlhub-confirmed' \r\n",
+					"username = 'sqladminuser' \r\n",
+					"password = 'try2find$5' \r\n",
+					"cnxn = pyodbc.connect('DRIVER={com.microsoft.sqlserver.jdbc.SQLServerDriver};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)\r\n",
+					"#sellcycletgtDF = spark.read.format(\"jdbc\") \\\r\n",
+					" #   .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName=sqldb-etlhub-confirmed;\") \\\r\n",
+					"  #  .option(\"query\", \"SELECT CONVERT(VARCHAR(32),HashBytes('MD5', SIEBEL_SALES_STAGE_CODE),2) as existing_nk_hash,     CONVERT(VARCHAR(32),HashBytes('MD5', SIEBEL_SALES_STAGE_NAME+SSM_STEP_NO+SSM_STEP_NAME),2) as existing_column_hash,tgt.* FROM DBXDH.DHTS_SELL_CYCLE as tgt\") \\\r\n",
+					"   # .option(\"user\", \"sqladminuser\") \\\r\n",
+					"    #.option(\"password\", \"try2find$5\") \\\r\n",
+					"    #.option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\r\n",
+					"    #.load()\r\n",
+					"sellcycletgtDF.show()\r\n",
+					"sellcycletgtDF.createOrReplaceTempView(\"sellcycletgt\")\r\n",
+					"#insertsellcycle=pd.read_sql(\"select a.SIEBEL_SALES_STAGE_CODE,a.SIEBEL_SALES_STAGE_NAME,a.SSM_STEP_NO,a.SSM_STEP_NAME from sellcyclesrc a left join  sellcycletgt b on a.nk_hash = b.existing_nk_hash where b.existing_nk_hash is null\",conn)\r\n",
+					"#insertsellcycledf=spark.createDataFrame(insertsellcycle)\r\n",
+					"#insertsellcycledf.show()\r\n",
+					"#%%sql\r\n",
+					"#select * from sellcyclesrc"
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

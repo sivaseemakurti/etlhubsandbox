@@ -1,0 +1,29 @@
+{
+	"name": "pgmpdm_src_sys_dim",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "SRC_SYS_DIM_202205311909.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "SRC_SYS_DIM_UID",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

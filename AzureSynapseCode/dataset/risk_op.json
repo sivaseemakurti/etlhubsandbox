@@ -1,0 +1,68 @@
+{
+	"name": "risk_op",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asa-kyn-001494-dev-eus-001-WorkspaceDefaultStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileSystem": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "PROC_ID",
+				"type": "String"
+			},
+			{
+				"name": "CNTRY",
+				"type": "String"
+			},
+			{
+				"name": "PROJECT_ID",
+				"type": "String"
+			},
+			{
+				"name": "DUE_DATE",
+				"type": "String"
+			},
+			{
+				"name": "REVISD_DUE_DATE",
+				"type": "String"
+			},
+			{
+				"name": "REMARKS",
+				"type": "String"
+			},
+			{
+				"name": "ORIG_ORG",
+				"type": "String"
+			},
+			{
+				"name": "CREATED_TS",
+				"type": "String"
+			},
+			{
+				"name": "CREATED_USERID",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_TS",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_USERID",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

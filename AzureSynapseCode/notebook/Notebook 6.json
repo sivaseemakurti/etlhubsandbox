@@ -1,0 +1,172 @@
+{
+	"name": "Notebook 6",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "d675b475-c43e-4a62-9394-92c8c1ab17a0"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"#set the data lake file location:\r\n",
+					"file_location = \"abfss://project@adls4fsoetlhubdevuseast.dfs.core.windows.net/sell_cycle_2022.csv\"\r\n",
+					" \r\n",
+					"#read in the data to dataframe df\r\n",
+					"df = spark.read.format(\"csv\").option(\"inferSchema\", \"true\").option(\"header\", \"true\").option(\"delimiter\",\",\").load(file_location)\r\n",
+					" \r\n",
+					"#display the dataframe\r\n",
+					"display(df)\r\n",
+					"\r\n",
+					"df.printSchema()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"#set the data lake file location:\r\n",
+					"file_location = \"abfss://project@adls4fsoetlhubdevuseast.dfs.core.windows.net/sell_cycle_2022.csv\"\r\n",
+					" \r\n",
+					"#read in the data to dataframe df\r\n",
+					"df = spark.read.format(\"csv\").option(\"inferSchema\", \"true\").option(\"header\", \"true\").option(\"delimiter\",\",\").load(file_location)\r\n",
+					" \r\n",
+					"#display the dataframe\r\n",
+					"display(df)\r\n",
+					"\r\n",
+					"df.printSchema()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#import necessary python libraries\r\n",
+					"\r\n",
+					"from azure.storage.blob import BlobClient\r\n",
+					"import pandas as pd\r\n",
+					"from io import StringIO\r\n",
+					"from pyspark.sql.functions import md5, concat_ws\r\n",
+					"from sqlite3 import connect\r\n",
+					"from pyspark.sql import functions as F\r\n",
+					"#conn = connect(':memory:')\r\n",
+					"\r\n",
+					"from pyspark.sql import SparkSession \r\n",
+					"from pyspark.sql.types import * \r\n",
+					"\r\n",
+					"\r\n",
+					"CREATE TABLE etlhubConfirmed.SELL_CYCLE_2022\r\n",
+					"     (SIEBEL_SALES_STAGE_CODE string,  \r\n",
+					"      SIEBEL_SALES_STAGE_NAME string,  \r\n",
+					"      SSM_STEP_NO string,  \r\n",
+					"      SSM_STEP_NAME string)"
+				],
+				"attachments": null,
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%sql\r\n",
+					"CREATE TABLE IF NOT EXISTS DBXDH.DHTS_SELL_CYCLE_2022\r\n",
+					"USING CSV\r\n",
+					"LOCATION 'abfss://project@adls4fsoetlhubdevuseast.dfs.core.windows.net/sell_cycle_2022.csv'"
+				],
+				"attachments": null,
+				"execution_count": 7
+			}
+		]
+	}
+}

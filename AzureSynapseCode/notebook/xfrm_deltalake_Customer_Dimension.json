@@ -1,0 +1,278 @@
+{
+	"name": "xfrm_deltalake_Customer_Dimension",
+	"properties": {
+		"folder": {
+			"name": "Siva"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "7b237b58-edc8-4cb6-a618-04e511f508bd"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"SCD Type2 using adls as source and delta lake as target"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#import necessary python libraries\n",
+					"\n",
+					"from azure.storage.blob import BlobClient\n",
+					"import pandas as pd\n",
+					"from io import StringIO\n",
+					"from pyspark.sql.functions import md5, concat_ws\n",
+					"from sqlite3 import connect\n",
+					"from pyspark.sql import functions as F\n",
+					"#conn = connect(':memory:')\n",
+					"\n",
+					"from pyspark.sql import SparkSession \n",
+					"from pyspark.sql.types import * \n",
+					"from delta.tables import *\n",
+					"#import os\n",
+					"import sys\n",
+					"\n",
+					"#Read data from adls csv file extracted from source at https://adls4fsoetlhubdevuseast.dfs.core.windows.net/deltalake/data/customer/\n",
+					"\n",
+					"account_name = 'adls4fsoetlhubdevuseast' # fill in your primary account name \n",
+					"container_name = 'customer' # fill in your container name \n",
+					"relative_path = '' # fill in your relative folder path \n",
+					"\n",
+					"adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \n",
+					"print('Primary storage account path: ' + adls_path) \n",
+					"\n",
+					"# Read a csv file \n",
+					"csv_path = adls_path + 'customer_data.csv' \n",
+					"incrementalData_DF = spark.read.csv(csv_path, header = 'true')\n",
+					"\n",
+					"natural_key=\"CUSTOMER_NO\"\n",
+					"#columns1 = [\"FINANCIAL_COUNTRY_CD\",\"CUSTOMER_DESC\",\"GBG_ID\"]\n",
+					"\n",
+					"# Get column list for creating Rec_Checksum\n",
+					"\n",
+					"#Add checks for duplicate data, Check for 1. dups in source data based on natural Key and\n",
+					"# 2. Dups in target already\n",
+					"\n",
+					"col_list=[]\n",
+					"for i in incrementalData_DF.columns:\n",
+					"    col_list.append(i)\n",
+					"    #print (col_list)\n",
+					"\n",
+					"# Add a checsum column to help identify the changed rows\n",
+					"\n",
+					"incrementalData_DF1 = incrementalData_DF.withColumn(\"nk_hash\",md5(natural_key))\n",
+					"incrementalData_DF2 = incrementalData_DF1.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\n",
+					"\n",
+					"#sell_cyclecolhashDF.show()\n",
+					"incrementalData_DF2.createOrReplaceTempView(\"incrementalData_DF2\")\n",
+					"\n",
+					"#Create a deltalake table with necessary columns\n",
+					"\n",
+					"#incrementalData_DF2.show()\n",
+					"\n",
+					"existingDataDF=spark.sql(\"SELECT tgt.* from etlhubConfirmed.customer_dimension tgt WHERE CURRENT_IND='Y'\")\n",
+					"#existingDF.createOrReplaceTempView('existingDF')\n",
+					"\n",
+					"existingMaxKeyDF=spark.sql(\"SELECT MAX(CUSTOMER_KEY) existing_MAX_KEY from etlhubConfirmed.customer_dimension tgt WHERE CURRENT_IND='Y'\")\n",
+					"\n",
+					"\n",
+					"# prefix all columns from target table with 'existing_'. This will help to differentiate columns when incremental and existing DF's are joined\n",
+					"\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\n",
+					"\n",
+					"#existingDataDF1.printSchema()\n",
+					"\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF1')\n",
+					"\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.CUSTOMER_NO == existingDataDF1.existing_CUSTOMER_NO, \"fullouter\") \n",
+					"fullJoin2=fullJoin1.join(existingMaxKeyDF,None,\"CROSS\")\n",
+					"\n",
+					"fullJoin2.createOrReplaceTempView('fullJoin')\n",
+					"\n",
+					"#Insert for New rows which are missing in target and present in source based on Natural Key.\n",
+					"\n",
+					"qry= \"\"\"\n",
+					"INSERT INTO etlhubConfirmed.customer_dimension \n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"LEFT JOIN etlhubConfirmed.customer_dimension B\n",
+					"ON A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"AND CURRENT_IND='Y'\n",
+					"WHERE existing_REC_CHECKSUM is null\n",
+					"AND B.REC_CHECKSUM <> A.column_hash\n",
+					";\n",
+					"\"\"\"\n",
+					"\n",
+					"qry1= \"\"\"\n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"LEFT JOIN etlhubConfirmed.customer_dimension B\n",
+					"ON A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"AND CURRENT_IND='Y'\n",
+					"WHERE existing_REC_CHECKSUM is null\n",
+					"AND B.REC_CHECKSUM <> A.column_hash\n",
+					";\n",
+					"\"\"\"\n",
+					"\n",
+					"qry3=\"\"\"\n",
+					"SELECT COUNT(*) as CNT, CUSTOMER_NO FROM incrementalData_DF2 GROUP BY CUSTOMER_NO HAVING COUNT(*)>1\n",
+					";\n",
+					"\"\"\"\n",
+					"\n",
+					"df3=spark.sql(qry3)\n",
+					"cnt1=df3.count()\n",
+					"\n",
+					"print (cnt1)\n",
+					"if cnt1 == 0:\n",
+					"    print(\"No Duplicates in source data\")\n",
+					"    status = 'success'\n",
+					"else:\n",
+					"    print(\"Below are the duplicates:\")\n",
+					"    df3.show()\n",
+					"    status = 'fail'\n",
+					"    #os.abort() this will take the spark cluster also down\n",
+					"    sys.exit(1)\n",
+					"    print(\"This will not be printed\")\n",
+					"print (\"this will not be printed either\")\n",
+					"\n",
+					"#Below code can be used to evaluate if the DMLs are successful or not Exception handling purpose\n",
+					"\n",
+					"#try:\n",
+					"#  sqlContext.sql(\"create table {}.`{}` as select * from mytempTable\".format(hivedb,table))\n",
+					"#except:\n",
+					"#   status = 'fail'\n",
+					"\n",
+					"#assert status == 'success', 'status should be success'\n",
+					"\n",
+					"#a=spark.sql(qry)\n",
+					"\n",
+					"#print( df3. || ' Duplicate found ')\n",
+					"\n",
+					"#a.num_affected_rows\n",
+					"#print(numOutputRows)\n",
+					"\n",
+					"\n",
+					"#deltaTable1 = DeltaTable.forPath(spark, 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer/customer_dimension2')\n",
+					"\n",
+					"#deltaTable = DeltaTable.forName(spark, 'etlhubConfirmed.customer_dimension')\n",
+					"\n",
+					"\n",
+					"#fullHistoryDF = deltaTable.history()    # get the full history of the table\n",
+					"\n",
+					"#lastOperationDF = deltaTable.history(1) # get the last operation\n",
+					"\n",
+					"#print(lastOperationDF.operationMetrics)\n",
+					"\n",
+					"#lastOperationDF.show()\n",
+					"\n",
+					"#fullHistoryDF.show()\n",
+					"\n",
+					"#print(num_affected_rows)\n",
+					"\n",
+					"#print(num_inserted_rows)\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT COUNT(*) as CNT, CUSTOMER_NO FROM incrementalData_DF2 GROUP BY CUSTOMER_NO HAVING COUNT(*)>1;"
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

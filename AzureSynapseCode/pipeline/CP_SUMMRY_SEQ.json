@@ -1,0 +1,37 @@
+{
+	"name": "CP_SUMMRY_SEQ",
+	"properties": {
+		"activities": [
+			{
+				"name": "CP_CNTRCT_CHNG_RPT",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "CP_CNTRCT_CHNG_RPT",
+						"type": "DataFlowReference"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"folder": {
+			"name": "PGMP"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-06-16T16:51:44Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,29 @@
+{
+	"name": "pgmpdm_zaux_etl_jobs",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "ZAUX_ETL_JOBS_202205311908.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "ETL_JOB_ID",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

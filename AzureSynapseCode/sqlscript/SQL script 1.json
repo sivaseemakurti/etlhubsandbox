@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 1",
+	"properties": {
+		"content": {
+			"query": "\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureopendatastorage.blob.core.windows.net/isdweatherdatacontainer/ISDWeather/year=2018/month=*/*.parquet',\n        FORMAT='PARQUET'\n    ) AS [weather];\n\nhttps://adls4fsoetlhubdevuseast.blob.core.windows.net/project/project_siv_data.csv\n\nselect top 10 *\nfrom openrowset(\n    bulk 'https://adls4fsoetlhubdevuseast.blob.core.windows.net/project/project_data.csv',\n    format = 'csv',\n    parser_version = '2.0',\n    firstrow = 2 ) as rows\n;\n\nSELECT * FROM DBXDH.DHT_PROJECT_SIV\n\n\n\n\nSELECT\n\nTOP 100 *\n\nFROM\n\nOPENROWSET(\n\nBULK 'https://adls4fsoetlhubdevuseast.dfs.core.windows.net/project/proj_tgt_file.csv',\n\nFORMAT = 'CSV',\n\nPARSER_VERSION = '2.0'\n\n) AS [result]\n\n\n\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

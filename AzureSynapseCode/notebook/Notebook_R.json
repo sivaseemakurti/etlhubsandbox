@@ -1,0 +1,274 @@
+{
+	"name": "Notebook_R",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "19142ba3-cf3f-4f0a-a0a6-cc18031d89f8"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1",
+				"state": {
+					"d39a2370-4c1d-46ed-9a35-67499bf08ce8": {
+						"type": "Synapse.DataFrame",
+						"sync_state": {
+							"table": {
+								"rows": [
+									{
+										"0": "A",
+										"1": "22",
+										"2": "45000"
+									},
+									{
+										"0": "B",
+										"1": "35",
+										"2": "65000"
+									},
+									{
+										"0": "C",
+										"1": "50",
+										"2": "85000"
+									}
+								],
+								"schema": [
+									{
+										"key": "0",
+										"name": "state",
+										"type": "string"
+									},
+									{
+										"key": "1",
+										"name": "age",
+										"type": "bigint"
+									},
+									{
+										"key": "2",
+										"name": "salary",
+										"type": "bigint"
+									}
+								],
+								"truncated": false
+							},
+							"isSummary": false,
+							"language": "scala"
+						},
+						"persist_state": {
+							"view": {
+								"type": "details",
+								"chartOptions": {
+									"chartType": "bar",
+									"aggregationType": "sum",
+									"categoryFieldKeys": [
+										"0"
+									],
+									"seriesFieldKeys": [
+										"1"
+									],
+									"isStacked": false
+								}
+							}
+						}
+					}
+				}
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"new_rows = [('A',22, 45000),(\"B\",35,65000) ,(\"C\",50,85000)]\r\n",
+					"demo_df = spark.createDataFrame(new_rows, ['state', 'age', 'salary'])\r\n",
+					"demo_df.show() \r\n",
+					"demo_df.createOrReplaceTempView('demo_df')"
+				],
+				"attachments": null,
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# demo_df.createOrReplaceTempView('demo_df')\r\n",
+					" # demo_df.write.csv('demo_df', mode='overwrite')\r\n",
+					" # demo_df.write.parquet('abfss://<<TheNameOfAStorageAccountFileSystem>>@<<TheNameOfAStorageAccount>>.dfs.core.windows.net/demodata/demo_df', mode='overwrite')"
+				],
+				"attachments": null,
+				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"**Language Change**"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(spark.sql('SELECT * FROM demo_df'))"
+				],
+				"attachments": null,
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from demo_df;"
+				],
+				"attachments": null,
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"new_rows = [('D',42, 55000),(\"E\",65,75000) ,(\"F\",70,95000)]\r\n",
+					"demo_dfs = spark.createDataFrame(new_rows, ['state', 'age', 'salary'])\r\n",
+					"demo_dfs.show() \r\n",
+					"demo_dfs.createOrReplaceTempView('demo_dfs')"
+				],
+				"attachments": null,
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from demo_df full join demo_dfs using(state,age,salary) order by state asc;"
+				],
+				"attachments": null,
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

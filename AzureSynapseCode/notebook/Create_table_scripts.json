@@ -1,0 +1,247 @@
+{
+	"name": "Create_table_scripts",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "ad8ff950-e363-42ca-8d9a-22667831768b"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE TABLE IF NOT EXISTS etlhubConfirmed.opportunity_business_partner_daily_ft (\r\n",
+					"    BUSINESS_PARTNER_FACT_KEY INT NOT NULL,\t\r\n",
+					"    BUSINESS_PARTNER_FACT_VERSION INT ,\t\r\n",
+					"    OPPORTUNITY_KEY INT,\r\n",
+					"    BUSINESS_PARTNER_KEY INT,\r\n",
+					"\tINFLUENCER_ROLE_CODE varchar(10) ,\r\n",
+					"\tCURRENT_IND varchar(1)  ,\r\n",
+					"\tEXTRACT_DT TIMESTAMP ,\r\n",
+					"\tREC_START_DT TIMESTAMP ,\r\n",
+					"\tREC_END_DT TIMESTAMP ,\r\n",
+					"\tSOURCE_SYSTEM varchar(50)  ,\r\n",
+					"\tREC_CHECKSUM varchar(32)  ,\r\n",
+					"\tREC_STATUS varchar(1)  ,\r\n",
+					"\tIMG_LST_UPD_DT TIMESTAMP NOT NULL,\r\n",
+					"\tIMG_CREATED_DT TIMESTAMP NOT NULL,\r\n",
+					"\tDATA_IND varchar(10)  ,\r\n",
+					"\tACTIVE_IN_SOURCE_IND char(1)  \r\n",
+					")\r\n",
+					"USING DELTA\r\n",
+					"PARTITIONED BY (CURRENT_IND)\r\n",
+					"-- specify data lake folder location\r\n",
+					"LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/BUSINESS_PARTNER_DAILY_FT'"
+				],
+				"attachments": null,
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE TABLE IF NOT EXISTS etlhubConfirmed.BUSINESS_PARTNER  (\r\n",
+					"BUSINESS_PARTNER_KEY INT NOT NULL , \r\n",
+					"BUSINESS_PARTNER_VERSION INT NOT NULL , \r\n",
+					"BUSINESS_PARTNER_ID VARCHAR(30), \r\n",
+					"BUS_PARTNER_NM VARCHAR(50), \r\n",
+					"AGR_BUS_PARTNER_ID VARCHAR(30), \r\n",
+					"AGR_BUS_PARTNER_NM VARCHAR(50), \r\n",
+					"CURRENT_IND VARCHAR(1) NOT NULL , \r\n",
+					"EXTRACT_DT TIMESTAMP, \r\n",
+					"REC_START_DT TIMESTAMP, \r\n",
+					"REC_END_DT TIMESTAMP, \r\n",
+					"SOURCE_SYSTEM VARCHAR(50), \r\n",
+					"REC_CHECKSUM VARCHAR(32), \r\n",
+					"REC_STATUS VARCHAR(1), \r\n",
+					"IMG_LST_UPD_DT TIMESTAMP , \r\n",
+					"IMG_CREATED_DT TIMESTAMP )  \r\n",
+					"USING DELTA\r\n",
+					"PARTITIONED BY (CURRENT_IND)\r\n",
+					"-- specify data lake folder location\r\n",
+					"LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/Business_Partner'"
+				],
+				"attachments": null,
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"DELETE etlhubConfirmed.BUSINESS_PARTNER\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE TABLE IF NOT EXISTS etlhubConfirmed.opportunity(\r\n",
+					"OPPORTUNITY_KEY INTEGER NOT NULL , \r\n",
+					"OPPORTUNITY_VERSION INT NOT NULL, \r\n",
+					"OPPORTUNITY_NUM varchar(50), \r\n",
+					"CURRENT_IND varchar(1), \r\n",
+					"EXTRACT_DT TIMESTAMP, \r\n",
+					"REC_START_DT TIMESTAMP, \r\n",
+					"REC_END_DT TIMESTAMP, \r\n",
+					"SOURCE_SYSTEM varchar(50), \r\n",
+					"REC_CHECKSUM varchar(32), \r\n",
+					"REC_STATUS varchar(1), \r\n",
+					"IMG_LST_UPD_DT TIMESTAMP, \r\n",
+					"IMG_CREATED_DT TIMESTAMP, \r\n",
+					"ISA_CODE varchar(10), \r\n",
+					"ARCH_REASON_CD varchar(20), \r\n",
+					"BUSINESS_TRANSACTION_TYPE varchar(1), \r\n",
+					"CLIENT_REPRESENTATIVE_NAME varchar(100), \r\n",
+					"COMPETITOR_LIST varchar(100), \r\n",
+					"IDENTIFIER_USER_NAME varchar(100), \r\n",
+					"OPPORTUNITY_NAME varchar(100), \r\n",
+					"OPPORTUNITY_SOURCE_CD varchar(20), \r\n",
+					"SBS_SOL_VALID_IND varchar(1) , \r\n",
+					"OPPORTUNITY_IDENTIFIER varchar(100) , \r\n",
+					"ROGUE_IND varchar(1), \r\n",
+					"REASON_TO_ACT varchar(255) , \r\n",
+					"SOLUTION_CATG varchar(1024) , \r\n",
+					"BRAND_SPONSOR_LIST varchar(500) , \r\n",
+					"GBS_GEOGRAPHY_NAME varchar(60), \r\n",
+					"GBS_BUSINESS_UNIT_GROUP_NAME varchar(60) , \r\n",
+					"GBS_BUSINESS_UNIT_NAME varchar(60) , \r\n",
+					"TAG_LIST varchar(1000) , \r\n",
+					"OPPORTUNITY_LEGACY_NO varchar(100) )\r\n",
+					"USING DELTA\r\n",
+					"PARTITIONED BY (CURRENT_IND)\r\n",
+					"-- specify data lake folder location\r\n",
+					"LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/OPPORTUNITY'"
+				],
+				"attachments": null,
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"ALTER TABLE etlhubConfirmed.opportunity ADD COLUMN ACTIVE_IN_SOURCE_IND char(1)\r\n",
+					"\t--ACTIVE_IN_SOURCE_IND char(1)"
+				],
+				"attachments": null,
+				"execution_count": 3
+			}
+		]
+	}
+}

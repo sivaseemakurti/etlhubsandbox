@@ -1,0 +1,37 @@
+{
+	"name": "pgmpdm_zaux_etl_exctn",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "ZAUX_ETL_EXCTN_202205311906.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "ETL_EXCTN_ID",
+				"type": "String"
+			},
+			{
+				"name": "ETL_PARAM_START_TMS",
+				"type": "String"
+			},
+			{
+				"name": "ETL_PARAM_END_TMS",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

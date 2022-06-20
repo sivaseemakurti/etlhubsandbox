@@ -1,0 +1,1157 @@
+{
+	"name": "30thMay_deltaLake_Customer_SCD_Type2",
+	"properties": {
+		"folder": {
+			"name": "Siva"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "82d36037-50df-42bf-a42d-a3a840d768cf"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"SCD Type2 using adls as source and delta lake as target"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#import necessary python libraries\n",
+					"\n",
+					"from azure.storage.blob import BlobClient\n",
+					"import pandas as pd\n",
+					"from io import StringIO\n",
+					"from pyspark.sql.functions import md5, concat_ws\n",
+					"from sqlite3 import connect\n",
+					"from pyspark.sql import functions as F\n",
+					"#conn = connect(':memory:')\n",
+					"\n",
+					"from pyspark.sql import SparkSession \n",
+					"from pyspark.sql.types import * \n",
+					"from delta.tables import *\n",
+					"\n",
+					"#Read data from adls csv file extracted from source at https://adls4fsoetlhubdevuseast.dfs.core.windows.net/deltalake/data/customer/\n",
+					"\n",
+					"account_name = 'adls4fsoetlhubdevuseast' # fill in your primary account name \n",
+					"container_name = 'customer' # fill in your container name \n",
+					"relative_path = '' # fill in your relative folder path \n",
+					"\n",
+					"adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \n",
+					"print('Primary storage account path: ' + adls_path) \n",
+					"\n",
+					"# Read a csv file \n",
+					"csv_path = adls_path + 'customer_data.csv' \n",
+					"incrementalData_DF = spark.read.csv(csv_path, header = 'true')\n",
+					"\n",
+					"natural_key=\"CUSTOMER_NO\"\n",
+					"#columns1 = [\"FINANCIAL_COUNTRY_CD\",\"CUSTOMER_DESC\",\"GBG_ID\"]\n",
+					"\n",
+					"# Get column list for creating Rec_Checksum\n",
+					"\n",
+					"col_list=[]\n",
+					"for i in incrementalData_DF.columns:\n",
+					"    col_list.append(i)\n",
+					"    #print (col_list)\n",
+					"\n",
+					"# Add a checsum column to help identify the changed rows\n",
+					"\n",
+					"incrementalData_DF1 = incrementalData_DF.withColumn(\"nk_hash\",md5(natural_key))\n",
+					"incrementalData_DF2 = incrementalData_DF1.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\n",
+					"\n",
+					"#sell_cyclecolhashDF.show()\n",
+					"incrementalData_DF2.createOrReplaceTempView(\"incrementalData_DF2\")\n",
+					"\n",
+					"#Create a deltalake table with necessary columns\n",
+					"\n",
+					"#incrementalData_DF2.show()\n",
+					"\n",
+					"existingDataDF=spark.sql(\"SELECT tgt.* from etlhubConfirmed.customer_dimension tgt WHERE CURRENT_IND='Y'\")\n",
+					"#existingDF.createOrReplaceTempView('existingDF')\n",
+					"\n",
+					"existingMaxKeyDF=spark.sql(\"SELECT MAX(CUSTOMER_KEY) existing_MAX_KEY from etlhubConfirmed.customer_dimension tgt WHERE CURRENT_IND='Y'\")\n",
+					"\n",
+					"\n",
+					"# prefix all columns from target table with 'existing_'. This will help to differentiate columns when incremental and existing DF's are joined\n",
+					"\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\n",
+					"\n",
+					"#existingDataDF1.printSchema()\n",
+					"\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF1')\n",
+					"\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.CUSTOMER_NO == existingDataDF1.existing_CUSTOMER_NO, \"fullouter\") \n",
+					"fullJoin2=fullJoin1.join(existingMaxKeyDF,None,\"CROSS\")\n",
+					"\n",
+					"fullJoin2.createOrReplaceTempView('fullJoin')\n",
+					"\n",
+					"#Insert for New rows which are missing in target and present in source based on Natural Key.\n",
+					"\n",
+					"qry= \"\"\"\n",
+					"INSERT INTO etlhubConfirmed.customer_dimension \n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"LEFT JOIN etlhubConfirmed.customer_dimension B\n",
+					"ON A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"AND CURRENT_IND='Y'\n",
+					"WHERE existing_REC_CHECKSUM is null\n",
+					"AND B.REC_CHECKSUM <> A.column_hash\n",
+					";\n",
+					"\"\"\"\n",
+					"\n",
+					"qry1= \"\"\"\n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"LEFT JOIN etlhubConfirmed.customer_dimension B\n",
+					"ON A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"AND CURRENT_IND='Y'\n",
+					"WHERE existing_REC_CHECKSUM is null\n",
+					"AND B.REC_CHECKSUM <> A.column_hash\n",
+					";\n",
+					"\"\"\"\n",
+					"#df3=spark.sql(qry1).count()\n",
+					"\n",
+					"#a=spark.sql(qry)\n",
+					"\n",
+					"#print( df3 || ' rows affected ')\n",
+					"\n",
+					"#a.num_affected_rows\n",
+					"#print(numOutputRows)\n",
+					"\n",
+					"\n",
+					"#deltaTable1 = DeltaTable.forPath(spark, 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer/customer_dimension2')\n",
+					"\n",
+					"#deltaTable = DeltaTable.forName(spark, 'etlhubConfirmed.customer_dimension')\n",
+					"\n",
+					"\n",
+					"#fullHistoryDF = deltaTable.history()    # get the full history of the table\n",
+					"\n",
+					"#lastOperationDF = deltaTable.history(1) # get the last operation\n",
+					"\n",
+					"#print(lastOperationDF.operationMetrics)\n",
+					"\n",
+					"#lastOperationDF.show()\n",
+					"\n",
+					"#fullHistoryDF.show()\n",
+					"\n",
+					"#print(num_affected_rows)\n",
+					"\n",
+					"#print(num_inserted_rows)\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 78
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"/*\n",
+					"\n",
+					"select * from incrementalData_DF2;\n",
+					"\n",
+					"select * from existingDataDF1;\n",
+					"\n",
+					"select * from fullJoin;\n",
+					"*/\n",
+					"\n",
+					"--select * from incrementalData_DF2;\n",
+					"\n",
+					"--select * from etlhubconfirmed.customer_dimension;\n",
+					"\n",
+					"SELECT 'All Rows' as Title, a.* FROM fullJoin a;\n",
+					"\n",
+					"\n",
+					"--No change records, ignore --7ROWS\n",
+					"select 'No Change Rows' as Title, a.*  from fullJoin a WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) = LOWER(existing_rec_checksum);\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select 'New Rows for Insert' as Title, COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_CUSTOMER_KEY is null;\n",
+					"--UPDATE ROWS\n",
+					"select 'Changed Rows for Update/Insert' as Title, a.* from fullJoin a WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"\n",
+					"INSERT INTO etlhubConfirmed.customer_dimension \n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"WHERE existing_REC_CHECKSUM is null\n",
+					"AND NOT EXISTS\n",
+					"(SELECT 1 FROM etlhubConfirmed.customer_dimension B\n",
+					"WHERE A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"and b.CURRENT_IND='Y'\n",
+					"AND A.column_hash=B.REC_CHECKSUM)\n",
+					";\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select 'New Rows for Insert2' as Title, COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_CUSTOMER_KEY is null;\n",
+					"--UPDATE ROWS\n",
+					"select 'Changed Rows for Update/Insert2' as Title, a.* from fullJoin a WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"--select * from etlhubConfirmed.customer_dimension where rec_checksum='c475b27f1b384e1d2289948edad59d84'\n",
+					"/*\n",
+					"\n",
+					"SELECT * FROM etlhubconfirmed.customer_dimension;\n",
+					"\n",
+					"UPDATE etlhubConfirmed.customer_dimension\n",
+					"SET GBG_ID='GB302S66'\n",
+					"    ,REC_CHECKSUM='c475b27f1b384e1d2289948edad59d86'\n",
+					"    WHERE CUSTOMER_KEY=5\n",
+					"    ;\n",
+					"\n",
+					"\n",
+					"SELECT * FROM etlhubconfirmed.customer_dimension;    \n",
+					"*/\n",
+					"--Changed records or update old record and insert new with incremented version\n",
+					"\n",
+					"--select * from fullJoin WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"/*\n",
+					"UPDATE etlhubconfirmed.customer_dimension\n",
+					"set CURRENT_IND='N'\n",
+					"    ,REC_END_DT=current_timestamp \n",
+					"    ,IMG_LST_UPD_DT=current_timestamp\n",
+					"WHERE (CUSTOMER_NO ) =  (select CUSTOMER_NO from fullJoin WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum) )\n",
+					"AND CURRENT_IND='Y'\n",
+					";\n",
+					"\n",
+					"*/\n",
+					"\n",
+					"\n",
+					"INSERT INTO etlhubConfirmed.customer_dimension \n",
+					"select existing_CUSTOMER_KEY,1+existing_VERSION as VERSION , \n",
+					"A.CUSTOMER_NO,A.FINANCIAL_COUNTRY_CD,A.GBG_ID,A.CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \n",
+					"'U' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \n",
+					"from fullJoin A \n",
+					"WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum)\n",
+					"AND NOT EXISTS\n",
+					"(SELECT 1 FROM etlhubConfirmed.customer_dimension B\n",
+					"WHERE A.CUSTOMER_NO=B.CUSTOMER_NO\n",
+					"and b.CURRENT_IND='Y'\n",
+					"AND A.column_hash=B.REC_CHECKSUM\n",
+					")\n",
+					";\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select 'New Rows for Insert after insert' as Title, COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_CUSTOMER_KEY is null;\n",
+					"--UPDATE ROWS\n",
+					"select 'Changed Rows for Update/Insert after insert' as Title, a.* from fullJoin a WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"MERGE INTO etlhubconfirmed.customer_dimension A\n",
+					"USING fullJoin B\n",
+					"ON A.CUSTOMER_NO = B.CUSTOMER_NO\n",
+					"AND LOWER(B.CUSTOMER_NO) = LOWER(B.existing_CUSTOMER_NO) and LOWER(B.column_hash) <> LOWER(B.existing_rec_checksum)\n",
+					"AND A.CURRENT_IND='Y' AND A.REC_START_DT=b.existing_REC_START_DT\n",
+					"WHEN MATCHED THEN UPDATE SET CURRENT_IND='N'\n",
+					"    ,REC_END_DT= existing_REC_START_DT -  INTERVAL 5 seconds --current_timestamp --existing_REC_START_DT-1\n",
+					"    ,IMG_LST_UPD_DT=current_timestamp\n",
+					";\n",
+					"\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select 'New Rows for Insert After Update' as Title, COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_CUSTOMER_KEY is null;\n",
+					"--UPDATE ROWS\n",
+					"select 'Changed Rows for Update/Insert After Update' as Title, a.* from fullJoin a WHERE LOWER(CUSTOMER_NO) = LOWER(existing_CUSTOMER_NO) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"\n",
+					"select 'Final rows in SCD Type2' as Title,a.* from etlhubconfirmed.customer_dimension a;\n",
+					"    "
+				],
+				"attachments": null,
+				"execution_count": 79
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from etlhubconfirmed.customer_dimension ;\n",
+					"--CUSTOMER_NO='C0000216';\n",
+					"--group by VERSION having count(*)>1;\n",
+					"/*\n",
+					"Update etlhubconfirmed.customer_dimension\n",
+					"set CURRENT_IND='Y'\n",
+					"    WHERE CURRENT_IND='N' and VERSION=2.0;\n",
+					"--DELETE FROM etlhubconfirmed.customer_dimension WHERE customer_key in (3.0,4.0);\n",
+					"\n",
+					"\n",
+					"Update etlhubconfirmed.customer_dimension\n",
+					"set FINANCIAL_COUNTRY_CD='896'\n",
+					"    ,REC_CHECKSUM='3145dfee7cc94e4483b4b0c7244a9949'\n",
+					"    WHERE customer_key=7.0;\n",
+					"Update etlhubconfirmed.customer_dimension\n",
+					"set GBG_ID='GB302S60'\n",
+					"    ,customer_name='WALPOLE CO-OPERATIVE BANK1'\n",
+					"    ,REC_CHECKSUM='0520612ce8718d5df3b8bb4b165a6548'\n",
+					"    WHERE customer_key=8.0;\n",
+					"UPDATE etlhubconfirmed.customer_dimension\n",
+					"SET CURRENT_IND='N'\n",
+					"    WHERE CUSTOMER_KEY=11.0;\n",
+					"*/\n",
+					"--select * from etlhubconfirmed.customer_dimension;"
+				],
+				"attachments": null,
+				"execution_count": 90
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"\n",
+					"select * from etlhubconfirmed.customer_dimension;\n",
+					"\n",
+					"\n",
+					"\n",
+					"select * from fullJoin;\n",
+					"\n",
+					"--No change records, ignore\n",
+					"select * from fullJoin WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) = LOWER(existing_rec_checksum);\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					"\n",
+					"--Changed records or update old record and insert new with incremented version\n",
+					"select * from fullJoin WHERE WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"--Soft deletes or rows no longer active in source\n",
+					"select * from fullJoin WHERE WHERE nk_hash is null;\n",
+					"\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1 \n",
+					"select * from fullJoin where existing_existing_nk_hash is null;"
+				],
+				"attachments": null,
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select customer_key,count(*) from etlhubconfirmed.customer_dimension where current_ind='Y' group by customer_key having count(*)>1;\n",
+					"\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"etlhubConfirmed.customer_dimension.toDF('abc')"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"UPDATE etlhubconfirmed.customer_dimension\n",
+					"SET fiNANCIAL_COUNTRY_CD='907'\n",
+					"    WHERE CURRENT_IND='Y' AND CUSTOMER_NO='0074657';\n",
+					"select * from etlhubconfirmed.customer_dimension;\n",
+					"\n",
+					"DELETe from etlhubconfirmed.customer_dimension where fiNANCIAL_COUNTRY_CD='905';\n",
+					"select * from etlhubconfirmed.customer_dimension;"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"MERGE INTO default.people10m\n",
+					"USING default.people10m_upload\n",
+					"ON default.people10m.id = default.people10m_upload.id\n",
+					"WHEN MATCHED THEN UPDATE SET *\n",
+					"WHEN NOT MATCHED THEN INSERT *"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Create a deltalake table with necessary columns\n",
+					""
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--CREATE DATABASE etlhubConfirmed;\n",
+					"\n",
+					"--drop table etlhubConfirmed.customer_dimension;\n",
+					"\n",
+					"-- Create Delta Lake table, define schema and location\n",
+					"CREATE TABLE IF NOT EXISTS etlhubConfirmed.customer_dimension (\n",
+					"    CUSTOMER_KEY INT NOT NULL,\n",
+					"\tVERSION INT ,\n",
+					"\tCUSTOMER_NO STRING ,\n",
+					"\tFINANCIAL_COUNTRY_CD varchar(10) ,\n",
+					"\tGBG_ID varchar(10)  ,\n",
+					"\tCUSTOMER_NAME varchar(30)  ,\n",
+					"\tCURRENT_IND varchar(1)  ,\n",
+					"\tEXTRACT_DT TIMESTAMP ,\n",
+					"\tREC_START_DT TIMESTAMP ,\n",
+					"\tREC_END_DT TIMESTAMP ,\n",
+					"\tSOURCE_SYSTEM varchar(50)  ,\n",
+					"\tREC_CHECKSUM varchar(32)  ,\n",
+					"\tREC_STATUS varchar(1)  ,\n",
+					"\tIMG_LST_UPD_DT TIMESTAMP NOT NULL,\n",
+					"\tIMG_CREATED_DT TIMESTAMP NOT NULL,\n",
+					"\tDATA_IND varchar(10)  ,\n",
+					"\tACTIVE_IN_SOURCE_IND char(1)  \n",
+					")\n",
+					"USING DELTA\n",
+					"PARTITIONED BY (CURRENT_IND)\n",
+					"-- specify data lake folder location\n",
+					"LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer'\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_name = 'etlhubConfirmed.customer_dimension'\n",
+					"source_data = 'https://adls4fsoetlhubdevuseast.dfs.core.windows.net/customer/DHT_CUSTOMER_202205191620.csv'\n",
+					"source_format = 'csv'\n",
+					"\n",
+					"spark.sql(\"COPY INTO \" + table_name + \\\n",
+					"  \" FROM '\" + source_data + \"'\" + \\\n",
+					"  \" FILEFORMAT = \" + source_format + ';'\n",
+					")\n",
+					"\n",
+					"customer_dim_data = spark.sql(\"SELECT * FROM \" + table_name)\n",
+					"\n",
+					"display(customer_dim_data)\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"read_format = 'csv'\n",
+					"write_format = 'delta'\n",
+					"load_path = 'https://adls4fsoetlhubdevuseast.dfs.core.windows.net/customer/DHT_CUSTOMER_202205191620.csv'\n",
+					"save_path = 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer/customer_dimension2'\n",
+					"table_name = 'etlhubConfirmed.customer_dimension'\n",
+					"\n",
+					"\n",
+					"account_name1 = 'adls4fsoetlhubdevuseast' # fill in your primary account name \n",
+					"container_name1 = 'customer' # fill in your container name \n",
+					"relative_path1 = '' # fill in your relative folder path \n",
+					"\n",
+					"adls_path1 = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name1, account_name1, relative_path1) \n",
+					"#print('Primary storage account path: ' + adls_path) \n",
+					"\n",
+					"# Read a csv file \n",
+					"csv_path1 = adls_path + 'DHT_CUSTOMER_202205191833.csv' \n",
+					"custData_DF1 = spark.read.csv(csv_path1, header = 'true')\n",
+					"\n",
+					"#custData_DF1.show()\n",
+					"\n",
+					"# Write the data to its target.\n",
+					"\n",
+					"custData_DF1.write \\\n",
+					"  .format(\"delta\") \\\n",
+					"  .mode(\"overwrite\") \\\n",
+					"  .save(save_path)\n",
+					"# Create the table.\n",
+					"#spark.sql(\"DROP TABLE \" + table_name)\n",
+					"spark.sql(\"CREATE TABLE IF NOT EXISTS \" + table_name + \" USING DELTA LOCATION '\" + save_path + \"'\" )\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--drop table etlhubConfirmed.customer_dimension;\n",
+					"select * from etlhubConfirmed.customer_dimension"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"end"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"table_name = 'etlhubConfirmed.customer_dimension'\n",
+					"source_data = 'https://adls4fsoetlhubdevuseast.dfs.core.windows.net/customer/DHT_CUSTOMER_202205191620.csv'\n",
+					"source_format = 'CSV'\n",
+					"\n",
+					"spark.sql(\"DROP TABLE IF EXISTS \" + table_name)\n",
+					"\n",
+					"spark.sql(\"CREATE TABLE \" + table_name + \" (\" \\\n",
+					"  \"loan_id BIGINT, \" + \\\n",
+					"  \"funded_amnt INT, \" + \\\n",
+					"  \"paid_amnt DOUBLE, \" + \\\n",
+					"  \"addr_state STRING)\"\n",
+					")\n",
+					"\n",
+					"spark.sql(\"COPY INTO \" + table_name + \\\n",
+					"  \" FROM '\" + source_data + \"'\" + \\\n",
+					"  \" FILEFORMAT = \" + source_format\n",
+					")\n",
+					"\n",
+					"loan_risks_upload_data = spark.sql(\"SELECT * FROM \" + table_name)\n",
+					"\n",
+					"display(loan_risks_upload_data)\n",
+					"Load data to datalake table"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"delta_table_path = \"abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer\" \n",
+					"data = spark.range(5,10) \n",
+					"data.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"\n",
+					"\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"old code\n",
+					"\n",
+					"\n",
+					"\n",
+					"# Create table in the metastore\n",
+					"\n",
+					"DeltaTable.createIfNotExists(spark) \\\n",
+					"  .tableName(\"default.customer_dimension\") \\\n",
+					"  .addColumn(\"CUSTOMER_KEY\", \"INT\") \\\n",
+					"  .addColumn(\"VERSION\", \"INT\") \\\n",
+					"  .addColumn(\"CUSTOMER_NO\", \"STRING\") \\\n",
+					"  .addColumn(\"FINANCIAL_COUNTRY_CD\")\\\n",
+					"  .addColumn(\"GBG_ID\", \"STRING\") \\\n",
+					"  .addColumn(\"CUSTOMER_NAME\", \"STRING\") \\\n",
+					"  .addColumn(\"CURRENT_IND\", \"STRING\") \\\n",
+					"  .addColumn(\"EXTRACT_DT\", \"TIMESTAMP\") \\\n",
+					"  .addColumn(\"REC_START_DT\", \"TIMESTAMP\") \\\n",
+					"  .addColumn(\"REC_END_DT\", \"TIMESTAMP\") \\\n",
+					"  .addColumn(\"SOURCE_SYSTEM\", \"STRING\") \\\n",
+					"  .addColumn(\"REC_STATUS\", \"STRING\") \\\n",
+					"  .addColumn(\"IMG_LST_UPD_DT\", \"TIMESTAMP\") \\\n",
+					"  .addColumn(\"IMG_CREATED_DT\", \"TIMESTAMP\") \\\n",
+					"  .addColumn(\"DATA_IND\", \"STRING\") \\\n",
+					"  .addColumn(\"ACTIVE_IN_SOURCE_IND\", \"STRING\") \\\n",
+					"  .execute()\n",
+					"\n",
+					"######################\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"#jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;database=dsqlpoolKyn001494DevEtlHubEUS001;user=undefined@asa-kyn-001494-dev-eus-001;password={your_password_here};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.sql.azuresynapse.net;loginTimeout=30;\n",
+					"existingDataDF = spark.read.format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"    .option(\"query\", \"SELECT MAX(CUSTOMER_KEY) OVER (ORDER BY CUSTOMER_KEY  ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING ) AS MAX_KEY, LOWER(CONVERT(VARCHAR(32),HashBytes('MD5', CUSTOMER_NO),2)) as existing_nk_hash,tgt.* FROM DBXDH.DHT_CUSTOMER as tgt WHERE CURRENT_IND='Y'\") \\\n",
+					"    .option(\"user\", \"sqladminuser\") \\\n",
+					"    .option(\"password\", \"try2find$5\") \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .load()\n",
+					"#existingDataDF1 = existingDataDF.select([F.col(c).alias(\"`\"'existing_'+c+\"`\") for c in existingDataDF.columns])\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\n",
+					"#existingDataDF1.printSchema()\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF')\n",
+					"\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.CUSTOMER_NO == existingDataDF1.existing_CUSTOMER_KEY, \"fullouter\") \n",
+					"fullJoin1.createOrReplaceTempView('fullJoin')\n",
+					"\n",
+					"#Insert for New rows\n",
+					"\n",
+					"fullJoin2=sqlContext.sql(\"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \\\n",
+					"CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \\\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM, \\\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \\\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \\\n",
+					"from fullJoin A WHERE existing_existing_nk_hash is null\")\n",
+					"fullJoin2.createOrReplaceTempView('fullJoin2')\n",
+					"\n",
+					"#insert new rows into database\n",
+					"\n",
+					"fullJoin2.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"dbtable\", \"DBXDH.DHT_CUSTOMER\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"append\") \\\n",
+					"        .save()\n",
+					"fullJoin2.show()\n",
+					""
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--select * from existingDataDF\n",
+					"\n",
+					"select * from fullJoin2\n",
+					"\n",
+					"#insert new rows into database\n",
+					"/*\n",
+					"fullJoin2.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"dbtable\", \"DBXDH.DHT_CUSTOMER\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"append\") \\\n",
+					"        .save()\n",
+					"        */"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"--ALL\n",
+					"SELECT * FROM FULLJOIN;\n",
+					"\n",
+					"--No change records, ignore\n",
+					"select * from fullJoin WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) = LOWER(existing_rec_checksum);\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					"\n",
+					"--Changed records or update old record and insert new with incremented version\n",
+					"select * from fullJoin WHERE WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"--Soft deletes or rows no longer active in source\n",
+					"select * from fullJoin WHERE WHERE nk_hash is null;\n",
+					"\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1 \n",
+					"select * from fullJoin where existing_existing_nk_hash is null;\n",
+					"\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--INSERTS OR NEW ROWS\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION ,\n",
+					"CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT,\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM,\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND,\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND\n",
+					"from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#test referance\n",
+					"fullJoin1.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"query\", \"INSERT INTO DBXDH.DHT_CUSTOMER1 \\\n",
+					"        select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION , \\\n",
+					"        CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \\\n",
+					"        CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM, \\\n",
+					"        'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \\\n",
+					"        'Y' AS ACTIVE_IN_SOURCE_IND \\\n",
+					"        from fullJoin A WHERE existing_existing_nk_hash is null\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"overwrite\") \\\n",
+					"        .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullJoin1.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"dbtable\", \"DBXDH.DHT_CUSTOMER\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"append\") \\\n",
+					"        .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"\n",
+					"df.write.mode(\"overwrite\") \\\n",
+					"    .format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://localhost:1433;databaseName={database};\") \\\n",
+					"    .option(\"dbtable\", table) \\\n",
+					"    .option(\"user\", user) \\\n",
+					"    .option(\"password\", password) \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

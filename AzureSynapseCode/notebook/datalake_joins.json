@@ -1,0 +1,221 @@
+{
+	"name": "datalake_joins",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "5588cce5-b44f-4914-9126-60a4673aebba"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"from azure.storage.blob import BlobClient\r\n",
+					"import pandas as pd\r\n",
+					"from io import StringIO\r\n",
+					"from pyspark.sql.functions import md5, concat_ws\r\n",
+					"from sqlite3 import connect\r\n",
+					"from pyspark.sql import functions as F\r\n",
+					"#conn = connect(':memory:')\r\n",
+					"\r\n",
+					"from pyspark.sql import SparkSession \r\n",
+					"from pyspark.sql.types import *\r\n",
+					"\r\n",
+					"#set the data lake file location:\r\n",
+					"file_location = \"abfss://project@adls4fsoetlhubdevuseast.dfs.core.windows.net/sell_cycle_2022.csv\"\r\n",
+					" \r\n",
+					"#read in the data to dataframe df\r\n",
+					"sellcyclesrcdf = spark.read.format(\"csv\").option(\"inferSchema\", \"true\").option(\"header\", \"true\").option(\"delimiter\",\",\").load(file_location)\r\n",
+					"#display the dataframe\r\n",
+					"#display(sellcyclesrcdf)\r\n",
+					"#sellcyclesrcdf.printSchema()\r\n",
+					"\r\n",
+					"\r\n",
+					"sellcycletgtdf=spark.sql(\"SELECT SIEBEL_SALES_STAGE_CODE,SIEBEL_SALES_STAGE_NAME,SSM_STEP_NO,SSM_STEP_NAME from etlhubConfirmed.dht_sell_cycle\")\r\n",
+					"sellcycletgtdf.createOrReplaceTempView('sellcycletgtdfview')\r\n",
+					"#sellcycletgtdf.show()\r\n",
+					"\r\n",
+					"#sellcyclefulljoindf=sellcycletgtdf.join(sellcyclesrcdf,sellcycletgtdf.SIEBEL_SALES_STAGE_CODE == sellcyclesrcdf.SIEBEL_SALES_STAGE_CODE, \"fullouter\") \r\n",
+					"#sellcyclefulljoindf.show()\r\n",
+					"#sellcyclesrcdf.SIEBEL_SALES_STAGE_CODE,sellcyclesrcdf.SIEBEL_SALES_STAGE_NAME,sellcyclesrcdf.SSM_STEP_NO,sellcyclesrcdf.SSM_STEP_NAME\r\n",
+					"\r\n",
+					"#sellcycletgtdf.join(sellcyclesrcdf,sellcycletgtdf.SIEBEL_SALES_STAGE_CODE == sellcyclesrcdf.SIEBEL_SALES_STAGE_CODE, \"fullouter\")\\\r\n",
+					"#.select(sellcyclesrcdf.SIEBEL_SALES_STAGE_CODE,sellcyclesrcdf.SIEBEL_SALES_STAGE_NAME,sellcyclesrcdf.SSM_STEP_NO,sellcyclesrcdf.SSM_STEP_NAME)\\\r\n",
+					"#.show(truncate=False)\r\n",
+					"\r\n",
+					"sellcycletgtdf.createOrReplaceTempView(\"tgt\")\r\n",
+					"sellcyclesrcdf.createOrReplaceTempView(\"src\")\r\n",
+					"\r\n",
+					"joinDF = spark.sql(\"select t.SIEBEL_SALES_STAGE_CODE as SIEBEL_SALES_STAGE_CODE_tgt,t.SIEBEL_SALES_STAGE_NAME as SIEBEL_SALES_STAGE_NAME_tgt,t.SSM_STEP_NO as SSM_STEP_NO_tgt,t.SSM_STEP_NAME as SSM_STEP_NAME_tgt,s.SIEBEL_SALES_STAGE_CODE as SIEBEL_SALES_STAGE_CODE_src,s.SIEBEL_SALES_STAGE_NAME as SIEBEL_SALES_STAGE_NAME_src,s.SSM_STEP_NO as SSM_STEP_NO_src,s.SSM_STEP_NAME as SSM_STEP_NAME_src from tgt t FULL JOIN src s on t.SIEBEL_SALES_STAGE_CODE == s.SIEBEL_SALES_STAGE_CODE\") \\\r\n",
+					"#.show(truncate=False)\r\n",
+					"joinDF.toDF\r\n",
+					"joinDF.show()\r\n",
+					"joinDF.createOrReplaceTempView(\"fulljoinDF\")\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"--select SIEBEL_SALES_STAGE_CODE_src,SIEBEL_SALES_STAGE_NAME_src,SSM_STEP_NO_src,SSM_STEP_NAME_src from fulljoinDF\r\n",
+					"--INSERT INTO etlhubConfirmed.sell_cycle select SIEBEL_SALES_STAGE_CODE_src,SIEBEL_SALES_STAGE_NAME_src,SSM_STEP_NO_src,SSM_STEP_NAME_src from fulljoinDF ;\r\n",
+					"select * from etlhubConfirmed.dht_sell_cycle"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"update table etlhubConfirmed.sell_cycle set SIEBEL_SALES_STAGE_NAME = SIEBEL_SALES_STAGE_NAME_src\r\n",
+					"where SIEBEL_SALES_STAGE_CODE_src = 1000"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"update etlhubConfirmed.dht_sell_cycle set SIEBEL_SALES_STAGE_NAME = '1200 newly added'\r\n",
+					"where SIEBEL_SALES_STAGE_CODE = '1000'"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

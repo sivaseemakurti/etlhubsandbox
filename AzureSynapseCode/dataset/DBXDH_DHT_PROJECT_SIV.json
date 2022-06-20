@@ -1,0 +1,146 @@
+{
+	"name": "DBXDH_DHT_PROJECT_SIV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asdb_etlhub_confirmed",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "PROJECT_KEY",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PROJECT_VERSION",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PROJECT_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "FINANCIAL_COUNTRY_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "LEDGER_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "OFFERING_COMPONENT_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "OPPORTUNITY_NUM",
+				"type": "varchar"
+			},
+			{
+				"name": "PROJECT_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "SIGNINGS_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "SIGNINGS_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "BUSINESS_TYPE_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "BUSINESS_TYPE_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "PROJECT_STATUS_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "PROJECT_STATUS_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "PROJECT_CUSTOMER_NO",
+				"type": "varchar"
+			},
+			{
+				"name": "PROJECT_CREATION_DATE",
+				"type": "date"
+			},
+			{
+				"name": "ACCOUTNING_DIVISION",
+				"type": "varchar"
+			},
+			{
+				"name": "RESPONSIBLE_SERV_OFFICE",
+				"type": "varchar"
+			},
+			{
+				"name": "CURRENT_IND",
+				"type": "varchar"
+			},
+			{
+				"name": "EXTRACT_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "REC_START_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "REC_END_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "SOURCE_SYSTEM",
+				"type": "varchar"
+			},
+			{
+				"name": "REC_CHECKSUM",
+				"type": "varchar"
+			},
+			{
+				"name": "REC_STATUS",
+				"type": "varchar"
+			},
+			{
+				"name": "IMG_LST_UPD_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "IMG_CREATED_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "DATA_IND",
+				"type": "varchar"
+			},
+			{
+				"name": "ACTIVE_IN_SOURCE_IND",
+				"type": "char"
+			}
+		],
+		"typeProperties": {
+			"schema": "DBXDH",
+			"table": "DHT_PROJECT_SIV"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,605 @@
+{
+	"name": "Notebook_siva1",
+	"properties": {
+		"folder": {
+			"name": "Siva"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "3c87bc4d-9332-4c94-bfb4-7eb60596a9a3"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Incremental source data in CSV file on Azure data lake storage"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.storage.blob import BlobClient\n",
+					"import pandas as pd\n",
+					"from io import StringIO\n",
+					"\n",
+					"sas_url = \"https://adls4fsoetlhubdevuseast.blob.core.windows.net/project/project_siv_data.csv?sv=2020-10-02&st=2022-05-11T09%3A48%3A28Z&se=2022-05-12T09%3A48%3A28Z&sr=b&sp=r&sig=JhdSw1F%2BODRA4%2B5nko0YwY8RGyjUjbuyA4ms2GblpeE%3D\"\n",
+					"\n",
+					"blob_client = BlobClient.from_blob_url(sas_url)\n",
+					"blob_data = blob_client.download_blob()\n",
+					"df = pd.read_csv(StringIO(blob_data.content_as_text()))\n",
+					"#print(df)\n",
+					"sparkDF=spark.createDataFrame(df) \n",
+					"\n",
+					"sparkDF.createOrReplaceTempView('customer_df')\n",
+					"#sparkDF.show()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Existing Data in SQL DB table"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"user = \"sqladminuser\"\n",
+					"password  = \"try2find$5\"\n",
+					"\n",
+					"jdbcDF = spark.read.format(\"jdbc\") \\\n",
+					"    .option(\"url\", \"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName={sqldb-etlhub-confirmed}\") \\\n",
+					"    .option(\"query\", \"SELECT tgt.* FROM DBXDH.DHT_PROJECT_PYSPARK as tgt WHERE CURRENT_IND='Y'\") \\\n",
+					"    .option(\"user\", user) \\\n",
+					"    .option(\"password\", password) \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .load()\n",
+					"#jdbcDF.show()\n",
+					"jdbcDF.createOrReplaceTempView('jdbcDF')"
+				],
+				"attachments": null,
+				"execution_count": 30
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Full Outer Join to identify New, Changed, Deleted rows and the ones no longer active in source"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullJoin=sparkDF.join(jdbcDF,sparkDF.PROJECT_ID == jdbcDF.PROJECT_ID, \"fullouter\") \n",
+					"fullJoin.createOrReplaceTempView('fullJoin')\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from fullJoin;\n",
+					"\n",
+					"select * from customer_df I \n",
+					"     full outer join \n",
+					"     jdbcDF E on I.PROJECT_ID=E.PROJECT_ID;"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Conditional split: New, Changed, Deleted records and no longer active in source"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullJoin.spark"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"emp = [(1,\"Smith\",-1,\"2018\",\"10\",\"M\",3000), \\\n",
+					"    (2,\"Rose\",1,\"2010\",\"20\",\"M\",4000), \\\n",
+					"    (3,\"Williams\",1,\"2010\",\"10\",\"M\",1000), \\\n",
+					"    (4,\"Jones\",2,\"2005\",\"10\",\"F\",2000), \\\n",
+					"    (5,\"Brown\",2,\"2010\",\"40\",\"\",-1), \\\n",
+					"      (6,\"Brown\",2,\"2010\",\"50\",\"\",-1) \\\n",
+					"  ]\n",
+					"empColumns = [\"emp_id\",\"name\",\"superior_emp_id\",\"year_joined\", \\\n",
+					"       \"emp_dept_id\",\"gender\",\"salary\"]\n",
+					"\n",
+					"empDF = spark.createDataFrame(data=emp, schema = empColumns)\n",
+					"empDF.printSchema()\n",
+					"empDF.show(truncate=False)\n",
+					"\n",
+					"dept = [(\"Finance\",10), \\\n",
+					"    (\"Marketing\",20), \\\n",
+					"    (\"Sales\",30), \\\n",
+					"    (\"IT\",40) \\\n",
+					"  ]\n",
+					"deptColumns = [\"dept_name\",\"dept_id\"]\n",
+					"deptDF = spark.createDataFrame(data=dept, schema = deptColumns)\n",
+					"deptDF.printSchema()\n",
+					"deptDF.show(truncate=False)\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"empDF.join(deptDF,empDF.emp_dept_id ==  deptDF.dept_id,\"inner\") \\\n",
+					"     .show(truncate=False)"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"empDF.join(deptDF,empDF.emp_dept_id ==  deptDF.dept_id,\"outer\") \\\n",
+					"    .show(truncate=False)\n",
+					"empDF.join(deptDF,empDF.emp_dept_id ==  deptDF.dept_id,\"full\") \\\n",
+					"    .show(truncate=False)\n",
+					"empDF.join(deptDF,empDF.emp_dept_id ==  deptDF.dept_id,\"fullouter\") \\\n",
+					"    .show(truncate=False)\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"columns = [\"SIEBEL_SALES_STAGE_NAME\",\"SSM_STEP_NO\",\"SSM_STEP_NAME\"]\n",
+					"for i in sell_cycleDF.columns:\n",
+					"    col_list.append(i)\n",
+					"    #print (col_list)\n",
+					"sell_cyclenkDF = sell_cycleDF.withColumn(\"nk_hash\",md5(\"SIEBEL_SALES_STAGE_CODE\"))\n",
+					"sell_cyclecolhashDF = sell_cyclenkDF.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\n",
+					"sell_cyclecolhashDF.createOrReplaceTempView(\"sellcyclesrc\")"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Final Code SCD Type2"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.storage.blob import BlobClient\n",
+					"import pandas as pd\n",
+					"from io import StringIO\n",
+					"from pyspark.sql.functions import md5, concat_ws\n",
+					"from sqlite3 import connect\n",
+					"from pyspark.sql import functions as F\n",
+					"conn = connect(':memory:')\n",
+					"natural_key=\"CUSTOMER_NO\"\n",
+					"columns = [\"FINANCIAL_COUNTRY_CD\",\"CUSTOMER_DESC\",\"GBG_ID\"]\n",
+					"sas_url = \"https://adls4fsoetlhubdevuseast.blob.core.windows.net/customer/customer_data.csv?sv=2020-10-02&st=2022-05-15T14%3A59%3A08Z&se=2023-05-16T14%3A59%3A00Z&sr=b&sp=r&sig=RYE103C28iVzI4%2BTmiDyMqJhGGNqBooxZgUc4LITF4U%3D\"\n",
+					"blob_client = BlobClient.from_blob_url(sas_url)\n",
+					"blob_data = blob_client.download_blob()\n",
+					"incrementalData = pd.read_csv(StringIO(blob_data.content_as_text()))\n",
+					"#print(df)\n",
+					"incrementalData_DF=spark.createDataFrame(incrementalData)\n",
+					"col_list=[]\n",
+					"for i in incrementalData_DF.columns:\n",
+					"    col_list.append(i)\n",
+					"    #print (col_list)\n",
+					"incrementalData_DF1 = incrementalData_DF.withColumn(\"nk_hash\",md5(natural_key))\n",
+					"incrementalData_DF2 = incrementalData_DF1.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\n",
+					"#sell_cyclecolhashDF.show()\n",
+					"incrementalData_DF2.createOrReplaceTempView(\"incrementalData_DF2\")\n",
+					"\n",
+					"\n",
+					"#insertsellcycle=pd.read_sql(\"select a.SIEBEL_SALES_STAGE_CODE,a.SIEBEL_SALES_STAGE_NAME,a.SSM_STEP_NO,a.SSM_STEP_NAME from sellcyclesrc a left join  sellcycletgt b on a.nk_hash = b.existing_nk_hash where b.existing_nk_hash is null\",conn)\n",
+					"#insertsellcycledf=spark.createDataFrame(insertsellcycle)\n",
+					"#insertsellcycledf.show()\n",
+					"#%%sql\n",
+					"#select * from sellcyclesrc\n",
+					"\n",
+					"\n",
+					"existingDataDF = spark.read.format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName=sqldb-etlhub-confirmed;\") \\\n",
+					"    .option(\"query\", \"SELECT MAX(CUSTOMER_KEY) OVER (ORDER BY CUSTOMER_KEY  ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING ) AS MAX_KEY, LOWER(CONVERT(VARCHAR(32),HashBytes('MD5', CUSTOMER_NO),2)) as existing_nk_hash,tgt.* FROM DBXDH.DHT_CUSTOMER1 as tgt WHERE CURRENT_IND='Y'\") \\\n",
+					"    .option(\"user\", \"sqladminuser\") \\\n",
+					"    .option(\"password\", \"try2find$5\") \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .load()\n",
+					"#existingDataDF1 = existingDataDF.select([F.col(c).alias(\"`\"'existing_'+c+\"`\") for c in existingDataDF.columns])\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\n",
+					"#existingDataDF1.printSchema()\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF')\n",
+					"\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.CUSTOMER_NO == existingDataDF1.existing_CUSTOMER_KEY, \"fullouter\") \n",
+					"fullJoin1.createOrReplaceTempView('fullJoin')\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from existingDataDF"
+				],
+				"attachments": null,
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"--ALL\n",
+					"SELECT * FROM FULLJOIN;\n",
+					"\n",
+					"--No change records, ignore\n",
+					"select * from fullJoin WHERE LOWER(nk_hash) = LOWER(existing_nk_hash) and LOWER(column_hash) = LOWER(rec_checksum);\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select COALESCE(MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_nk_hash is null;\n",
+					"\n",
+					"--Changed records or update old record and insert new with incremented version\n",
+					"select * from fullJoin WHERE WHERE LOWER(nk_hash) = LOWER(existing_nk_hash) and LOWER(column_hash) <> LOWER(rec_checksum);\n",
+					"\n",
+					"\n",
+					"--Soft deletes or rows no longer active in source\n",
+					"select * from fullJoin WHERE WHERE nk_hash is null;\n",
+					"\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1 \n",
+					"select * from fullJoin where existing_nk_hash is null;\n",
+					"\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--INSERTS OR NEW ROWS\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION ,\n",
+					"CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT,\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM,\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND,\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND\n",
+					"from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullJoin1.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName=sqldb-etlhub-confirmed;\") \\\n",
+					"        .option(\"query\", \"INSERT INTO DBXDH.DHT_CUSTOMER1 \\\n",
+					"        select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION , \\\n",
+					"        CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \\\n",
+					"        CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM, \\\n",
+					"        'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \\\n",
+					"        'Y' AS ACTIVE_IN_SOURCE_IND \\\n",
+					"        from fullJoin A WHERE existing_existing_nk_hash is null\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"overwrite\") \\\n",
+					"        .save()"
+				],
+				"attachments": null,
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"\n",
+					"df.write.mode(\"overwrite\") \\\n",
+					"    .format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://localhost:1433;databaseName={database};\") \\\n",
+					"    .option(\"dbtable\", table) \\\n",
+					"    .option(\"user\", user) \\\n",
+					"    .option(\"password\", password) \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

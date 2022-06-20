@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 12",
+	"properties": {
+		"content": {
+			"query": "\n\nIF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseParquetFormat') \n\tCREATE EXTERNAL FILE FORMAT [SynapseParquetFormat] \n\tWITH ( FORMAT_TYPE = PARQUET)\nGO\n\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'deltalake_adls4fsoetlhubdevuseast_dfs_core_windows_net') \n\tCREATE EXTERNAL DATA SOURCE [deltalake_adls4fsoetlhubdevuseast_dfs_core_windows_net] \n\tWITH (\n\t\tLOCATION = 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net' \n\t)\nGO\n\nCREATE EXTERNAL TABLE customer_dim_temp (\n\t[CUSTOMER_KEY] nvarchar(4000),\n\t[VERSION] nvarchar(4000),\n\t[CUSTOMER_NO] nvarchar(4000),\n\t[FINANCIAL_COUNTRY_CD] nvarchar(4000),\n\t[GBG_ID] nvarchar(4000),\n\t[CUSTOMER_NAME] nvarchar(4000),\n\t[CURRENT_IND] nvarchar(4000),\n\t[EXTRACT_DT] nvarchar(4000),\n\t[REC_START_DT] nvarchar(4000),\n\t[REC_END_DT] nvarchar(4000),\n\t[SOURCE_SYSTEM] nvarchar(4000),\n\t[REC_CHECKSUM] nvarchar(4000),\n\t[REC_STATUS] nvarchar(4000),\n\t[IMG_LST_UPD_DT] nvarchar(4000),\n\t[IMG_CREATED_DT] nvarchar(4000),\n\t[DATA_IND] nvarchar(4000),\n\t[ACTIVE_IN_SOURCE_IND] nvarchar(4000)\n\t)\n\tWITH (\n\tLOCATION = 'data/customer/customer_dimension2/**',\n\tDATA_SOURCE = [deltalake_adls4fsoetlhubdevuseast_dfs_core_windows_net],\n\tFILE_FORMAT = [SynapseParquetFormat]\n\t)\nGO\n\n\nSELECT TOP 100 * FROM dbo.customer_dim_temp\nGO",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "kyn",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

@@ -1,0 +1,62 @@
+{
+	"name": "project_dim_no_parameters",
+	"properties": {
+		"activities": [
+			{
+				"name": "scdType2_Project_Dimension_Latest",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "bkp_scdType2_Project_Dimension_Latest",
+						"type": "DataFlowReference",
+						"parameters": {
+							"NaturalKey": "'PROJECT_ID'",
+							"NonkeyColumns": "'FINANCIAL_COUNTRY_CD,LEDGER_CD,OFFERING_COMPONENT_CD,OPPORTUNITY_NUM,PROJECT_DESC,SIGNINGS_CD,SIGNINGS_DESC,BUSINESS_TYPE_CD,BUSINESS_TYPE_DESC,PROJECT_STATUS_CD,PROJECT_STATUS_DESC,PROJECT_CUSTOMER_NO,PROJECT_CREATION_DATE,ACCOUTNING_DIVISION,RESPONSIBLE_SERV_OFFICE'",
+							"EXTRACT_DT": "currentTimestamp()",
+							"REC_START_DT": "currentTimestamp()",
+							"SurrogateKey": "'PROJECT_KEY'",
+							"DimTableName": "'DHT_PROJECT_SIV'"
+						},
+						"datasetParameters": {
+							"genericInput": {
+								"FolderName": "project"
+							},
+							"genericDimensionTable": {
+								"DimTableName1": "DHT_PROJECT_SIV"
+							},
+							"Update4ChangedRecords": {
+								"DimTableName1": "DHT_PROJECT_SIV"
+							},
+							"Insert4ChangedRows": {
+								"DimTableName1": "DHT_PROJECT_SIV"
+							},
+							"SinkInsert4NewRows": {
+								"DimTableName1": "DHT_PROJECT_SIV"
+							},
+							"sink1": {
+								"DimTableName1": "DHT_PROJECT_SIV"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2022-05-04T18:14:02Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

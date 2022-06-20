@@ -1,0 +1,51 @@
+{
+	"name": "P_ZAUX_DATE_TRIGGERS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_pgmp_rfs_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "PROC_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "CRETD_DT",
+				"type": "date"
+			},
+			{
+				"name": "RCVD_DT",
+				"type": "date"
+			},
+			{
+				"name": "PRPSL_SENT_TO_CLNT_DT",
+				"type": "date"
+			},
+			{
+				"name": "PRPSL_DSPSN_DT",
+				"type": "date"
+			},
+			{
+				"name": "PRPSL_ACCPTD_DT",
+				"type": "date"
+			},
+			{
+				"name": "IMPLMTN_READY_DT",
+				"type": "date"
+			},
+			{
+				"name": "IMPLMTN_CLOSE_OUT_DT",
+				"type": "date"
+			}
+		],
+		"typeProperties": {
+			"schema": "PGMPDM",
+			"table": "ZAUX_DATE_TRIGGERS"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

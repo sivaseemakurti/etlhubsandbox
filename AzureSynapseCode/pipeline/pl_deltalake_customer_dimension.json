@@ -1,0 +1,65 @@
+{
+	"name": "pl_deltalake_customer_dimension",
+	"properties": {
+		"activities": [
+			{
+				"name": "Notebook1",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "xfrm_deltalake_Customer_Dimension",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "sPoolKyn001494",
+						"type": "BigDataPoolReference"
+					}
+				}
+			},
+			{
+				"name": "Notebook2",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Notebook1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "Notebook 9",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "sPoolKyn001494",
+						"type": "BigDataPoolReference"
+					}
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2022-06-03T12:05:38Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

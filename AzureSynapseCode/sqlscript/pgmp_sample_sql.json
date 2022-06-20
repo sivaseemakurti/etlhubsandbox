@@ -1,0 +1,17 @@
+{
+	"name": "pgmp_sample_sql",
+	"properties": {
+		"content": {
+			"query": "CREATE TABLE ACCTRPTS_DIM (\n    ACCTRPTS_DIM_UID as BIGINT,\n    REMARKS as CHAR(255)\n);\n\nSELECT name, is_cdc_enabled FROM sys.databases;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

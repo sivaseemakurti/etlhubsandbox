@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 11",
+	"properties": {
+		"content": {
+			"query": " update [etlhubconfirmed].[dbo].[dht_sell_cycle]\n set [SIEBEL_SALES_STAGE_NAME] = \"\"\n where [SIEBEL_SALES_STAGE_CODE] = \"1000\"",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "etlhubconfirmed",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

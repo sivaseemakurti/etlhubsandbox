@@ -1,0 +1,137 @@
+{
+	"name": "bkp_scdType2_Project_Dimension",
+	"properties": {
+		"folder": {
+			"name": "backup"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsProjectDimensionRaw",
+						"type": "DatasetReference"
+					},
+					"name": "genericInput"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "genericDimensionTable"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsProjectDimensionRaw",
+						"type": "DatasetReference"
+					},
+					"name": "DimensionTable"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedAddHashInput"
+				},
+				{
+					"name": "derivedAddHashExisting"
+				},
+				{
+					"name": "fullOuterJoin"
+				},
+				{
+					"name": "NoChangeRecords"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "select2"
+				},
+				{
+					"name": "select3"
+				},
+				{
+					"name": "select4"
+				},
+				{
+					"name": "select5"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     NaturalKey as string ('PROJECT_ID'),",
+				"     NonkeyColumns as string ('FINANCIAL_COUNTRY_CD,LEDGER_CD,OFFERING_COMPONENT_CD,OPPORTUNITY_NUM,PROJECT_DESC,SIGNINGS_CD,SIGNINGS_DESC,BUSINESS_TYPE_CD,BUSINESS_TYPE_DESC,PROJECT_STATUS_CD,PROJECT_STATUS_DESC,PROJECT_CUSTOMER_NO,PROJECT_CREATION_DATE,ACCOUTNING_DIVISION,RESPONSIBLE_SERV_OFFICE')",
+				"}",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> genericInput",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> genericDimensionTable",
+				"genericInput derive(nk_hash = md5(byNames(split($NaturalKey,','))),",
+				"          columns_hash = md5(byNames(split($NonkeyColumns,',')))) ~> derivedAddHashInput",
+				"genericDimensionTable derive(nk_hash_existing = md5(byName($NaturalKey)),",
+				"          columns_hash_existing = md5(byNames(split($NonkeyColumns,',')))) ~> derivedAddHashExisting",
+				"derivedAddHashInput, derivedAddHashExisting join(nk_hash == nk_hash_existing,",
+				"     joinType:'outer',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> fullOuterJoin",
+				"fullOuterJoin split(equals(nk_hash_existing,nk_hash) && equals(columns_hash_existing,columns_hash),",
+				"     equals(nk_hash_existing,nk_hash) && iifNull((columns_hash_existing),'NULL',(columns_hash_existing)) != iifNull((columns_hash),'NULL',(columns_hash)),",
+				"     isNull(nk_hash_existing),",
+				"     isNull(nk_hash),",
+				"     disjoint: false) ~> NoChangeRecords@(NoChangeRecords, ChangedRecordsForUpdate, NewrecodsForInsert, NotActiveInSource, RestAll)",
+				"derivedAddHashExisting select(mapColumn(",
+				"          nk_hash = nk_hash_existing,",
+				"          columns_hash = columns_hash_existing",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"NoChangeRecords@ChangedRecordsForUpdate select(mapColumn(",
+				"          nk_hash,",
+				"          columns_hash,",
+				"          nk_hash_existing,",
+				"          columns_hash_existing",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select2",
+				"NoChangeRecords@NewrecodsForInsert select(mapColumn(",
+				"          nk_hash,",
+				"          columns_hash,",
+				"          nk_hash_existing,",
+				"          columns_hash_existing",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select3",
+				"NoChangeRecords@NotActiveInSource select(mapColumn(",
+				"          nk_hash,",
+				"          columns_hash,",
+				"          nk_hash_existing,",
+				"          columns_hash_existing",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select4",
+				"NoChangeRecords@RestAll select(mapColumn(",
+				"          nk_hash,",
+				"          columns_hash,",
+				"          nk_hash_existing,",
+				"          columns_hash_existing",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select5",
+				"NoChangeRecords@NoChangeRecords sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimensionTable"
+			]
+		}
+	}
+}

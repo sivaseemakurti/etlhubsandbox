@@ -1,0 +1,125 @@
+{
+	"name": "Src_tgt_Geo_CDC",
+	"properties": {
+		"folder": {
+			"name": "PGMP"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "GetSrGeoTmf"
+				},
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "TgtGeoDim"
+				}
+			],
+			"sinks": [
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "TgtUpsertGeoData"
+				}
+			],
+			"transformations": [
+				{
+					"name": "changecapture"
+				},
+				{
+					"name": "sortedlkpdata"
+				},
+				{
+					"name": "srclkpgeodata"
+				},
+				{
+					"name": "UpsertGeo"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          GEO_DIM_UID as integer,",
+				"          IOT_RGN_CD as string,",
+				"          IOT_RGN_NM as string,",
+				"          IMT_RGN_CD as string,",
+				"          IMT_SRGN_NM as string,",
+				"          SRGN_CD as string,",
+				"          SRGNCTRY_CD as string,",
+				"          SRGNCTRY_NM as string,",
+				"          IOTSORT_NUM as integer,",
+				"          GEO_CD as string,",
+				"          GEO_TYP_CD as string,",
+				"          GMR_RGN_CD as string,",
+				"          GMR_RGN_NM as string,",
+				"          IOT_SHORT_NM as string,",
+				"          IMT_SHORT_NM as string,",
+				"          ETL_JOB_ID as integer,",
+				"          ETL_EXCTN_ID as integer,",
+				"          SRC_SYS_DIM_UID as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'query',",
+				"     store: 'sqlserver',",
+				"     query: 'select\\n     G.GEO_DIM_UID,\\n     G.IOT_RGN_CD,\\n     G.IOT_RGN_NM,\\n     G.IMT_RGN_CD,\\n     G.IMT_SRGN_NM,\\n     G.SRGN_CD,\\n     G.SRGNCTRY_CD,\\n     G.SRGNCTRY_NM,\\n     G.IOTSORT_NUM,\\n     G.GEO_CD,\\n     G.GEO_TYP_CD,\\n     G.GMR_RGN_CD,\\n     G.GMR_RGN_NM,\\n     G.IOT_SHORT_NM,\\n     G.IMT_SHORT_NM,\\n     JOB.ETL_JOB_ID,\\n     FIL.ETL_EXCTN_ID,\\n     SYS.SRC_SYS_DIM_UID\\nfrom\\n     PGMPDM.GEO_DIM_TMF G\\n     left join\\n     (select\\n               coalesce(max(ETL_JOB_ID), -1) as ETL_JOB_ID\\n          from\\n               PGMPDM.ZAUX_ETL_JOBS\\n          where\\n               ETL_JOB_NM = \\'#DSJobName#\\'     )JOB\\n     on 1 = 1\\n     left join\\n     (select\\n               ETL_EXCTN_ID\\n          from\\n               PGMPDM.[ZAUX_ETL_EXCTN]\\n          where\\n               IS_CURR_IND = \\'Y\\')FIL\\n     on 1 = 1\\n     left join\\n     (select\\n               coalesce(max(SRC_SYS_DIM_UID), -1) as SRC_SYS_DIM_UID\\n          from\\n               PGMPDM.SRC_SYS_DIM\\n          where\\n               SRC_SYS_CD = \\'TMF\\')SYS\\n     on 1 = 1\\n',",
+				"     isolationLevel: 'READ_UNCOMMITTED') ~> GetSrGeoTmf",
+				"source(output(",
+				"          GEO_DIM_UID as integer,",
+				"          IOT_RGN_CD as string,",
+				"          IOT_RGN_NM as string,",
+				"          IMT_RGN_CD as string,",
+				"          IMT_SRGN_NM as string,",
+				"          SRGN_CD as string,",
+				"          SRGNCTRY_CD as string,",
+				"          SRGNCTRY_NM as string,",
+				"          IOTSORT_NUM as integer,",
+				"          GEO_CD as string,",
+				"          GEO_TYP_CD as string,",
+				"          GMR_RGN_CD as string,",
+				"          GMR_RGN_NM as string,",
+				"          IOT_SHORT_NM as string,",
+				"          IMT_SHORT_NM as string,",
+				"          ETL_JOB_ID as integer,",
+				"          SRC_SYS_DIM_UID as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'query',",
+				"     store: 'sqlserver',",
+				"     query: 'select\\n     GEO_DIM_UID,\\n     IOT_RGN_CD,\\n     IOT_RGN_NM,\\n     IMT_RGN_CD,\\n     IMT_SRGN_NM,\\n     SRGN_CD,\\n     SRGNCTRY_CD,\\n     SRGNCTRY_NM,\\n     IOTSORT_NUM,\\n     GEO_CD,\\n     GEO_TYP_CD,\\n     GMR_RGN_CD,\\n     GMR_RGN_NM,\\n     IOT_SHORT_NM,\\n     IMT_SHORT_NM,\\n     ETL_JOB_ID,\\n     SRC_SYS_DIM_UID\\nfrom\\n     PGMPDM.GEO_DIM\\n',",
+				"     isolationLevel: 'READ_UNCOMMITTED') ~> TgtGeoDim",
+				"sortedlkpdata, TgtGeoDim join(GetSrGeoTmf@GEO_DIM_UID == TgtGeoDim@GEO_DIM_UID,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> changecapture",
+				"GetSrGeoTmf sort(asc(GEO_DIM_UID, true)) ~> sortedlkpdata",
+				"TgtGeoDim sort(asc(GEO_DIM_UID, true)) ~> srclkpgeodata",
+				"changecapture alterRow(upsertIf(GetSrGeoTmf@GEO_DIM_UID!=toInteger(null()))) ~> UpsertGeo",
+				"UpsertGeo sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table',",
+				"     store: 'sqlserver',",
+				"     schemaName: 'PGMPDM',",
+				"     tableName: 'GEO_DIM',",
+				"     insertable: false,",
+				"     updateable: false,",
+				"     deletable: false,",
+				"     upsertable: true,",
+				"     keys:['GEO_DIM_UID'],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> TgtUpsertGeoData"
+			]
+		}
+	}
+}

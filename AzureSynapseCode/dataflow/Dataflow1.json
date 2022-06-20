@@ -1,0 +1,117 @@
+{
+	"name": "Dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DBXDH_DHT_PROJECT_SIV",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText2",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "select1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          PROJECT_KEY as integer,",
+				"          PROJECT_VERSION as integer,",
+				"          PROJECT_ID as string,",
+				"          FINANCIAL_COUNTRY_CD as string,",
+				"          LEDGER_CD as string,",
+				"          OFFERING_COMPONENT_CD as string,",
+				"          OPPORTUNITY_NUM as string,",
+				"          PROJECT_DESC as string,",
+				"          SIGNINGS_CD as string,",
+				"          SIGNINGS_DESC as string,",
+				"          BUSINESS_TYPE_CD as string,",
+				"          BUSINESS_TYPE_DESC as string,",
+				"          PROJECT_STATUS_CD as string,",
+				"          PROJECT_STATUS_DESC as string,",
+				"          PROJECT_CUSTOMER_NO as string,",
+				"          PROJECT_CREATION_DATE as date,",
+				"          ACCOUTNING_DIVISION as string,",
+				"          RESPONSIBLE_SERV_OFFICE as string,",
+				"          CURRENT_IND as string,",
+				"          EXTRACT_DT as timestamp,",
+				"          REC_START_DT as timestamp,",
+				"          REC_END_DT as timestamp,",
+				"          SOURCE_SYSTEM as string,",
+				"          REC_CHECKSUM as string,",
+				"          REC_STATUS as string,",
+				"          IMG_LST_UPD_DT as timestamp,",
+				"          IMG_CREATED_DT as timestamp,",
+				"          DATA_IND as string,",
+				"          ACTIVE_IN_SOURCE_IND as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_COMMITTED',",
+				"     query: 'select * from DBXDH.DHT_PROJECT_SIV where PROJECT_ID = \\'EEI0001\\'',",
+				"     format: 'query') ~> source1",
+				"source1 select(mapColumn(",
+				"          PROJECT_KEY,",
+				"          PROJECT_VERSION,",
+				"          PROJECT_ID,",
+				"          FINANCIAL_COUNTRY_CD,",
+				"          LEDGER_CD,",
+				"          OFFERING_COMPONENT_CD,",
+				"          OPPORTUNITY_NUM,",
+				"          PROJECT_DESC,",
+				"          SIGNINGS_CD,",
+				"          SIGNINGS_DESC,",
+				"          BUSINESS_TYPE_CD,",
+				"          BUSINESS_TYPE_DESC,",
+				"          PROJECT_STATUS_CD,",
+				"          PROJECT_STATUS_DESC,",
+				"          PROJECT_CUSTOMER_NO,",
+				"          PROJECT_CREATION_DATE,",
+				"          ACCOUTNING_DIVISION,",
+				"          RESPONSIBLE_SERV_OFFICE,",
+				"          CURRENT_IND,",
+				"          EXTRACT_DT,",
+				"          REC_START_DT,",
+				"          REC_END_DT,",
+				"          SOURCE_SYSTEM,",
+				"          REC_CHECKSUM,",
+				"          REC_STATUS,",
+				"          IMG_LST_UPD_DT,",
+				"          IMG_CREATED_DT,",
+				"          DATA_IND,",
+				"          ACTIVE_IN_SOURCE_IND",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          SIEBEL_SALES_STAGE_CODE as string,",
+				"          SIEBEL_SALES_STAGE_NAME as string,",
+				"          SSM_STEP_NO as string,",
+				"          SSM_STEP_NAME as string",
+				"     ),",
+				"     partitionFileNames:['proj_tgt_file_with_filter.csv'],",
+				"     umask: 0777,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sink1"
+			]
+		}
+	}
+}

@@ -1,0 +1,92 @@
+{
+	"name": "pgmpdm_acctrpts_dim",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "pgmp-account_reports"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "ACCTRPTS_DIM_202205301234.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "ACCTRPTS_DIM_UID",
+				"type": "String"
+			},
+			{
+				"name": "PRJCT_ID",
+				"type": "String"
+			},
+			{
+				"name": "ACCTRPTS_REM_TXT",
+				"type": "String"
+			},
+			{
+				"name": "SRC_CRETD_TMS",
+				"type": "String"
+			},
+			{
+				"name": "SRC_CRETD_USER_ID",
+				"type": "String"
+			},
+			{
+				"name": "SRC_UPDTD_TMS",
+				"type": "String"
+			},
+			{
+				"name": "SRC_UPDTD_USER_ID",
+				"type": "String"
+			},
+			{
+				"name": "ROW_STAT_CD",
+				"type": "String"
+			},
+			{
+				"name": "SRC_SYS_DIM_UID",
+				"type": "String"
+			},
+			{
+				"name": "ETL_JOB_ID",
+				"type": "String"
+			},
+			{
+				"name": "ETL_EXCTN_ID",
+				"type": "String"
+			},
+			{
+				"name": "DM_CRETD_TMS",
+				"type": "String"
+			},
+			{
+				"name": "DM_CRETD_USER_ID",
+				"type": "String"
+			},
+			{
+				"name": "DM_UPDTD_TMS",
+				"type": "String"
+			},
+			{
+				"name": "DM_UPDTD_USER_ID",
+				"type": "String"
+			},
+			{
+				"name": "ORIG_ORG",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

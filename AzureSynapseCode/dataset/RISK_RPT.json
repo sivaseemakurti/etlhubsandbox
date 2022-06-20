@@ -1,0 +1,390 @@
+{
+	"name": "RISK_RPT",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_pgmp_rfs_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "CNTRCT_DIM_UID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "CONTRACT",
+				"type": "varchar"
+			},
+			{
+				"name": "UNIQUE_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "CLIENT_REFERENCE",
+				"type": "varchar"
+			},
+			{
+				"name": "DISPLAY_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "GLBL_BUY_GRP_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "PARENT_UNIQUE_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PARENT_DISPLAY_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "PARENT_TITLE",
+				"type": "varchar"
+			},
+			{
+				"name": "PROC_TITLE",
+				"type": "varchar"
+			},
+			{
+				"name": "WKFLW_DEF_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "INIT_WKFLW_DEF_ID_DESCR",
+				"type": "varchar"
+			},
+			{
+				"name": "PROC_DESCRIPTION",
+				"type": "varchar"
+			},
+			{
+				"name": "CURRENT_WORKFLOW",
+				"type": "varchar"
+			},
+			{
+				"name": "CURRENT_WKFLW_STEP",
+				"type": "varchar"
+			},
+			{
+				"name": "CURRENT_STEP_SEQ",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "STEP_DESCRIPTION",
+				"type": "varchar"
+			},
+			{
+				"name": "STATE_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "STATUS_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "ASSIGNED_TO",
+				"type": "varchar"
+			},
+			{
+				"name": "AUDIENCE",
+				"type": "varchar"
+			},
+			{
+				"name": "PRIORITY_TXT",
+				"type": "varchar"
+			},
+			{
+				"name": "CONDITION",
+				"type": "varchar"
+			},
+			{
+				"name": "REGION",
+				"type": "varchar"
+			},
+			{
+				"name": "REQUESTOR",
+				"type": "varchar"
+			},
+			{
+				"name": "CREATED_BY",
+				"type": "varchar"
+			},
+			{
+				"name": "CREATED_DATE",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "LAST_UPDATED",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "RISK_RESPONSE_DUE_DATE",
+				"type": "date"
+			},
+			{
+				"name": "REVISED_RISK_RESPONSE_DUE_DATE",
+				"type": "date"
+			},
+			{
+				"name": "DUE_IN_DAY_CNT",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "OVERDUE",
+				"type": "varchar"
+			},
+			{
+				"name": "COMPLETION_DATE",
+				"type": "date"
+			},
+			{
+				"name": "COMPLETION_REASON",
+				"type": "varchar"
+			},
+			{
+				"name": "COUNTRY",
+				"type": "varchar"
+			},
+			{
+				"name": "RISK_SOURCE",
+				"type": "varchar"
+			},
+			{
+				"name": "REMARKS",
+				"type": "varchar"
+			},
+			{
+				"name": "ORIGINATING_ORG",
+				"type": "varchar"
+			},
+			{
+				"name": "RISK_OWNER",
+				"type": "varchar"
+			},
+			{
+				"name": "PROBABILITY",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PROBABILITY_SMPL",
+				"type": "varchar"
+			},
+			{
+				"name": "IMPACT",
+				"type": "char"
+			},
+			{
+				"name": "RESPONSE_PLAN",
+				"type": "varchar"
+			},
+			{
+				"name": "LOCAL_CURRENCY",
+				"type": "varchar"
+			},
+			{
+				"name": "IMPACT_AMOUNT_LOCAL_CURRENCY",
+				"type": "decimal",
+				"precision": 15,
+				"scale": 2
+			},
+			{
+				"name": "GS_RISK_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "BUSINESS_CONTROLS_RISK",
+				"type": "varchar"
+			},
+			{
+				"name": "WWBCIT_REFERENCE",
+				"type": "varchar"
+			},
+			{
+				"name": "RISK_ANLYSS_DUE_DT",
+				"type": "date"
+			},
+			{
+				"name": "RVSD_RISK_ANLYSS_DUE_DT",
+				"type": "date"
+			},
+			{
+				"name": "RISK_RSPNS_TYPE_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "RISK_OCCURRED_CD",
+				"type": "char"
+			},
+			{
+				"name": "RISK_CLOSE_RSN_TXT",
+				"type": "varchar"
+			},
+			{
+				"name": "SRC_SYS_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "LEGACY_UNIQUE_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "LEGACY_DISPLAYED_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "LATEST_IBM_ONLY_NOTE",
+				"type": "varchar"
+			},
+			{
+				"name": "LATEST_IBM_AND_CLIENT_NOTE",
+				"type": "varchar"
+			},
+			{
+				"name": "CNTRCT_TYPE_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "PROC_TYPE_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "PROC_TYPE_DESC",
+				"type": "varchar"
+			},
+			{
+				"name": "ON_HOLD_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "WITHDRWN_DIM_UID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "WITHDRWN_DT",
+				"type": "date"
+			},
+			{
+				"name": "ORGNZN_DIM_UID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "IBM_ONLY_TEXT_1",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_TEXT_2",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_TEXT_3",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_TEXT_4",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_TEXT_5",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_TEXT_6",
+				"type": "varchar"
+			},
+			{
+				"name": "IBM_ONLY_DATE_1",
+				"type": "date"
+			},
+			{
+				"name": "IBM_ONLY_DATE_2",
+				"type": "date"
+			},
+			{
+				"name": "IBM_ONLY_DATE_3",
+				"type": "date"
+			},
+			{
+				"name": "IBM_ONLY_DATE_4",
+				"type": "date"
+			},
+			{
+				"name": "IBM_ONLY_DATE_5",
+				"type": "date"
+			},
+			{
+				"name": "IBM_ONLY_DATE_6",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_TEXT_1",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_TEXT_2",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_TEXT_3",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_TEXT_4",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_TEXT_5",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_TEXT_6",
+				"type": "varchar"
+			},
+			{
+				"name": "PUBLIC_DATE_1",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_DATE_2",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_DATE_3",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_DATE_4",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_DATE_5",
+				"type": "date"
+			},
+			{
+				"name": "PUBLIC_DATE_6",
+				"type": "date"
+			},
+			{
+				"name": "STATE_OF_ORGANIZATION",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "PGMPDM",
+			"table": "RISK_RPT"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}
