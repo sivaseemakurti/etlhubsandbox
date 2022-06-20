@@ -1,0 +1,60 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "asa-kyn-001494-dev-eus-001"
+		},
+		"AzureBlobStorage1_connectionString": {
+			"value": ""
+		},
+		"AzureDataLakeStorage1_accountKey": {
+			"value": ""
+		},
+		"AzureDataLakeStorage2_accountKey": {
+			"value": ""
+		},
+		"AzureSqlDatabase1_connectionString": {
+			"value": ""
+		},
+		"asa-kyn-001494-dev-eus-001-WorkspaceDefaultSqlServer_connectionString": {
+			"value": ""
+		},
+		"asdb_etlhub_confirmed_connectionString": {
+			"value": ""
+		},
+		"linkedService1_connectionString": {
+			"value": ""
+		},
+		"ln_rfs_pgmp_connectionString": {
+			"value": ""
+		},
+		"ls_adls_project_dimension_accountKey": {
+			"value": ""
+		},
+		"ls_db2_esa_kyndryl_connectionString": {
+			"value": ""
+		},
+		"ls_pgmp_rfs_db_connectionString": {
+			"value": ""
+		},
+		"tgt_geo_accountKey": {
+			"value": ""
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"value": "https://adlskyn001494deveus001.dfs.core.windows.net"
+		},
+		"AzureDataLakeStorage2_properties_typeProperties_url": {
+			"value": "https://adls4fsoetlhubdevuseast.dfs.core.windows.net"
+		},
+		"asa-kyn-001494-dev-eus-001-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://adls4fsoetlhubdevuseast.dfs.core.windows.net"
+		},
+		"ls_adls_project_dimension_properties_typeProperties_url": {
+			"value": "https://adls4fsoetlhubdevuseast.dfs.core.windows.net"
+		},
+		"tgt_geo_properties_typeProperties_url": {
+			"value": "https://adls4fsoetlhubdevuseast.dfs.core.windows.net"
+		}
+	}
+}
