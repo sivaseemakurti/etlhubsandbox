@@ -1,0 +1,24 @@
+{
+	"name": "tr_pgmp_pipeline_account_reports",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "pgmp_pipeline",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2022-06-01T06:35:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}

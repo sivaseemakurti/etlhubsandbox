@@ -1,0 +1,195 @@
+{
+	"name": "sell_cycle_upsert_python",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "8ed30c57-4f8c-44fa-bee2-ce8e2cdea06e"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"sellcycletgtDF = spark.read.format(\"jdbc\") \\\r\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName=sqldb-etlhub-confirmed;\") \\\r\n",
+					"    .option(\"query\", \"SELECT CONVERT(VARCHAR(32),HashBytes('MD5', SIEBEL_SALES_STAGE_CODE),2) as existing_nk_hash,     CONVERT(VARCHAR(32),HashBytes('MD5', SIEBEL_SALES_STAGE_NAME+SSM_STEP_NO+SSM_STEP_NAME),2) as existing_column_hash,tgt.* FROM DBXDH.DHTS_SELL_CYCLE as tgt\") \\\r\n",
+					"    .option(\"user\", \"sqladminuser\") \\\r\n",
+					"    .option(\"password\", \"try2find$5\") \\\r\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\r\n",
+					"    .load()"
+				],
+				"attachments": null,
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from sqlalchemy.engine import URL\r\n",
+					"connection_string = \"DRIVER={ODBC Driver 17 for SQL Server};SERVER=sqlserver-kyn-001494-dev-eus-001.database.windows.net;DATABASE=sqldb-etlhub-confirmed;UID=sqladminuser;PWD=try2find$5\"\r\n",
+					"connection_url = URL.create(\"mssql+pyodbc\", query={\"odbc_connect\": connection_string})\r\n",
+					"\r\n",
+					"dbEngine = create_engine(connection_url)"
+				],
+				"attachments": null,
+				"execution_count": 41
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\r\n",
+					"import csv\r\n",
+					"\r\n",
+					"import pandas as pd\r\n",
+					"import sqlalchemy\r\n",
+					"\r\n",
+					"def main():\r\n",
+					"\r\n",
+					"    # 1. Load the new products\r\n",
+					"    df = pd.read_csv('project/sell_cycle_2022.csv', dtype={\r\n",
+					"        'SIEBEL_SALES_STAGE_CODE': str,\r\n",
+					"        'SIEBEL_SALES_STAGE_NAME': str,\r\n",
+					"        'SSM_STEP_NO': str,\r\n",
+					"        'SSM_STEP_NAME': str,\r\n",
+					"        })"
+				],
+				"attachments": null,
+				"execution_count": 54
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\r\n",
+					"import sqlalchemy\r\n",
+					"\r\n",
+					"with dbEngine.begin() as con:\r\n",
+					"    # 1. Create temp table\r\n",
+					"    con.execute(\"\"\"\r\n",
+					"        CREATE TABLE #sellcycletemp11 (\r\n",
+					"            [SIEBEL_SALES_STAGE_CODE] NVARCHAR(100)\r\n",
+					"            , [SIEBEL_SALES_STAGE_NAME] NVARCHAR(100)\r\n",
+					"            , [SSM_STEP_NO]  NVARCHAR(100)\r\n",
+					"            , [SSM_STEP_NAME] NVARCHAR(100)\r\n",
+					"            )\r\n",
+					"    \"\"\")\r\n",
+					"    # 2. Insert into temp table\r\n",
+					"    sql_insert_products = f\"INSERT INTO #sellcycletemp11 VALUES (?,?,?,?)\"\r\n",
+					"    con.execute(sql_insert_products, df.values.tolist())\r\n",
+					"\r\n",
+					"    # 3. Merge the #sellcycletemp with sellcycle\r\n",
+					"    sql_merge = \"\"\"\r\n",
+					"        MERGE DBXDH.DHTS_SELL_CYCLE  AS Target\r\n",
+					"        USING #sellcycletemp11 AS Source\r\n",
+					"            ON Source.SIEBEL_SALES_STAGE_CODE = Target.SIEBEL_SALES_STAGE_CODE\r\n",
+					"        /* new records ('right match') */\r\n",
+					"        WHEN NOT MATCHED BY Target THEN\r\n",
+					"            INSERT ([SIEBEL_SALES_STAGE_CODE], [SIEBEL_SALES_STAGE_NAME], [SSM_STEP_NO], [SSM_STEP_NAME]) \r\n",
+					"            VALUES (source.SIEBEL_SALES_STAGE_CODE, source.SIEBEL_SALES_STAGE_NAME, source.SSM_STEP_NO, source.SSM_STEP_NAME)\r\n",
+					"        /* matching records ('inner match') */\r\n",
+					"        WHEN MATCHED THEN \r\n",
+					"            UPDATE SET\r\n",
+					"            Target.SIEBEL_SALES_STAGE_NAME= Source.SIEBEL_SALES_STAGE_NAME\r\n",
+					"            , Target.SSM_STEP_NO = Source.SSM_STEP_NO\r\n",
+					"            , Target.SSM_STEP_NAME = Source.SSM_STEP_NAME\r\n",
+					"        /* deprecated records ('left match') */\r\n",
+					"        /* WHEN NOT MATCHED BY Source THEN\r\n",
+					"    DELETE */\r\n",
+					" \r\n",
+					" OUTPUT \r\n",
+					"\t$action\r\n",
+					" , inserted.*\r\n",
+					";\r\n",
+					"    \"\"\"\r\n",
+					"    con.execute(sql_merge)\r\n",
+					"\r\n",
+					"    # 4. Delete temporary table\r\n",
+					"    con.execute(\"\"\"DROP TABLE IF EXISTS #sellcycletemp5;\"\"\")\r\n",
+					"    con.execute(\"\"\"DROP TABLE IF EXISTS #sellcycletemp11;\"\"\")\r\n",
+					"\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 58
+			}
+		]
+	}
+}

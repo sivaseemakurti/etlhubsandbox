@@ -1,0 +1,117 @@
+{
+	"name": "customer_load_woversion",
+	"properties": {
+		"activities": [
+			{
+				"name": "Data flow1",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "scdType2_Generict_Dimension_Load_WOVersion",
+						"type": "DataFlowReference",
+						"parameters": {
+							"NaturalKey": "'CUSTOMER_NO'",
+							"NonkeyColumns": "'FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME'",
+							"EXTRACT_DT": "currentTimestamp()",
+							"REC_START_DT": "currentTimestamp()",
+							"DimTableName": "'DHT_CUSTOMER1'",
+							"UpdateKey": {
+								"value": "'@{pipeline().parameters.Key1}'",
+								"type": "Expression"
+							},
+							"SurrogateKey": "'CUSTOMER_KEY'"
+						},
+						"datasetParameters": {
+							"genericInput": {
+								"FolderName": {
+									"value": "@pipeline().parameters.Folder_Name",
+									"type": "Expression"
+								},
+								"fileName": {
+									"value": "@pipeline().parameters.File_Name",
+									"type": "Expression"
+								}
+							},
+							"genericDimensionTable": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Dimension_Table_Name",
+									"type": "Expression"
+								},
+								"Key1": {
+									"value": "@pipeline().parameters.Key1",
+									"type": "Expression"
+								}
+							},
+							"Update4ChangedRecords": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Dimension_Table_Name",
+									"type": "Expression"
+								},
+								"Key1": {
+									"value": "@pipeline().parameters.Key1",
+									"type": "Expression"
+								}
+							},
+							"Insert4ChangedRows": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Dimension_Table_Name",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"SinkInsert4NewRows": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Dimension_Table_Name",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"Update4SoftDeletedRows": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Dimension_Table_Name",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"parameters": {
+			"Key1": {
+				"type": "string",
+				"defaultValue": "CUSTOMER_KEY"
+			},
+			"Folder_Name": {
+				"type": "string",
+				"defaultValue": "customer"
+			},
+			"Dimension_Table_Name": {
+				"type": "string",
+				"defaultValue": "DHT_CUSTOMER1"
+			},
+			"File_Name": {
+				"type": "string",
+				"defaultValue": "customer_data.csv"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-05-04T18:52:53Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

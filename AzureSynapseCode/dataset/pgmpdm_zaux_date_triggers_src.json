@@ -1,0 +1,57 @@
+{
+	"name": "pgmpdm_zaux_date_triggers_src",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "ZAUX_DATE_TRIGGERS_202205311911.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "PROC_ID",
+				"type": "String"
+			},
+			{
+				"name": "CRETD_DT",
+				"type": "String"
+			},
+			{
+				"name": "RCVD_DT",
+				"type": "String"
+			},
+			{
+				"name": "PRPSL_SENT_TO_CLNT_DT",
+				"type": "String"
+			},
+			{
+				"name": "PRPSL_DSPSN_DT",
+				"type": "String"
+			},
+			{
+				"name": "PRPSL_ACCPTD_DT",
+				"type": "String"
+			},
+			{
+				"name": "IMPLMTN_READY_DT",
+				"type": "String"
+			},
+			{
+				"name": "IMPLMTN_CLOSE_OUT_DT",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

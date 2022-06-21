@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 6",
+	"properties": {
+		"content": {
+			"query": "SELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://contosolake.dfs.core.windows.net/users/NYCTripSmall.parquet',\n        FORMAT='PARQUET'\n    ) AS [result] ",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "dsqlpoolKyn001494DevEtlHubEUS001",
+				"poolName": "dsqlpoolKyn001494DevEtlHubEUS001"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

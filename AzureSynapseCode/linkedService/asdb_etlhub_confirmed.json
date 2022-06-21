@@ -1,0 +1,16 @@
+{
+	"name": "asdb_etlhub_confirmed",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "integrated security=False;encrypt=True;connection timeout=30;data source=sqlserver-kyn-001494-dev-eus-001.database.windows.net;initial catalog=sqldb-etlhub-confirmed;user id=sqladminuser",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIlNZTkFQU0VAMTU0MTJDMjQtQkJGQS00QTg0LTk2MUYtMjNFNTVENzIwMEM1XzI4MjM3NGI4LTQyMTYtNDJjZC04NWJmLWZiMDA1NzRkNzlkZSINCn0="
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

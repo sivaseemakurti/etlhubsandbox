@@ -1,0 +1,299 @@
+{
+	"name": "scdType2_Generict_Dimension_Load",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsProjectDimensionRaw",
+						"type": "DatasetReference"
+					},
+					"name": "genericInput"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "genericDimensionTable"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "Update4ChangedRecords"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "Insert4ChangedRows"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "SinkInsert4NewRows"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsAzureSqlDBEtlhubGenericDimension",
+						"type": "DatasetReference"
+					},
+					"name": "Update4SoftDeletedRows"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedAddHashInput"
+				},
+				{
+					"name": "derivedAddHashExisting"
+				},
+				{
+					"name": "fullOuterJoin"
+				},
+				{
+					"name": "NoChangeRecords"
+				},
+				{
+					"name": "selectExisting"
+				},
+				{
+					"name": "select5"
+				},
+				{
+					"name": "derivedChangedRows4Update"
+				},
+				{
+					"name": "ExistingRowsUpdate"
+				},
+				{
+					"name": "select6"
+				},
+				{
+					"name": "ExistingRowsInsert"
+				},
+				{
+					"name": "AlterRowInsertsNewRows"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "derivedColumn2"
+				},
+				{
+					"name": "derivedInserts4ChangedRows"
+				},
+				{
+					"name": "getMaxKey"
+				},
+				{
+					"name": "joinGetMaxKey"
+				},
+				{
+					"name": "selectInsertNewRows"
+				},
+				{
+					"name": "surrogateKey1"
+				},
+				{
+					"name": "SelectInserts4ChangedRows"
+				},
+				{
+					"name": "selectChangedRecords4Update"
+				},
+				{
+					"name": "select7"
+				},
+				{
+					"name": "alterRow1"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     NaturalKey as string ('PROJECT_ID1'),",
+				"     NonkeyColumns as string ('FINANCIAL_COUNTRY_CD,LEDGER_CD,OFFERING_COMPONENT_CD,OPPORTUNITY_NUM,PROJECT_DESC,SIGNINGS_CD,SIGNINGS_DESC,BUSINESS_TYPE_CD,BUSINESS_TYPE_DESC,PROJECT_STATUS_CD,PROJECT_STATUS_DESC,PROJECT_CUSTOMER_NO,PROJECT_CREATION_DATE,ACCOUTNING_DIVISION,RESPONSIBLE_SERV_OFFICE'),",
+				"     EXTRACT_DT as timestamp (currentTimestamp()),",
+				"     REC_START_DT as timestamp (currentTimestamp()),",
+				"     SurrogateKey as string ('CUSTOMER'),",
+				"     DimTableName as string ('TableName1')",
+				"}",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> genericInput",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     query: ('SELECT * FROM DBXDH.' + $DimTableName + ' WHERE CURRENT_IND=\\'' + 'Y' + '\\''),",
+				"     format: 'query') ~> genericDimensionTable",
+				"genericInput derive(nk_hash = md5(byNames(split($NaturalKey,','))),",
+				"          columns_hash = md5(byNames(split($NonkeyColumns,',')))) ~> derivedAddHashInput",
+				"genericDimensionTable derive(nk_hash = md5(byNames(split($NaturalKey,','))),",
+				"          columns_hash = toString(byName('REC_CHECKSUM'))) ~> derivedAddHashExisting",
+				"derivedAddHashInput, selectExisting join(nk_hash == existing_nk_hash,",
+				"     joinType:'outer',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> fullOuterJoin",
+				"fullOuterJoin split(equals(existing_nk_hash,nk_hash) && equals(existing_columns_hash,columns_hash),",
+				"     equals(existing_nk_hash,nk_hash) && iifNull((existing_columns_hash),'NULL',(existing_columns_hash)) != iifNull((columns_hash),'NULL',(columns_hash)),",
+				"     isNull(existing_nk_hash),",
+				"     isNull(nk_hash),",
+				"     disjoint: false) ~> NoChangeRecords@(NoChangeRecords, ChangedRecordsForUpdate, NewrecodsForInsert, NotActiveInSource, RestAll)",
+				"derivedAddHashExisting select(mapColumn(",
+				"          each(match(true()),",
+				"               'existing_'+$$ = $$)",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectExisting",
+				"NoChangeRecords@RestAll select(mapColumn(",
+				"          REC_CHECKSUM = existing_columns_hash",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select5",
+				"NoChangeRecords@ChangedRecordsForUpdate derive(CURRENT_IND = 'N',",
+				"          REC_END_DT = currentTimestamp(),",
+				"          IMG_LST_UPD_DT = currentTimestamp(),",
+				"          REC_STATUS = 'U',",
+				"          VERSION = toInteger(byName('existing_' + left($SurrogateKey,instr($SurrogateKey,'_KEY')) +'VERSION')) +1) ~> derivedChangedRows4Update",
+				"selectChangedRecords4Update alterRow(updateIf(true())) ~> ExistingRowsUpdate",
+				"NoChangeRecords@NoChangeRecords select(skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select6",
+				"SelectInserts4ChangedRows alterRow(insertIf(true())) ~> ExistingRowsInsert",
+				"selectInsertNewRows alterRow(insertIf(true())) ~> AlterRowInsertsNewRows",
+				"NoChangeRecords@NotActiveInSource derive(ACTIVE_IN_SOURCE_IND = 'N',",
+				"          IMG_LST_UPD_DT = currentTimestamp()) ~> derivedColumn1",
+				"surrogateKey1 derive(CURRENT_IND = 'Y',",
+				"          EXTRACT_DT = $EXTRACT_DT,",
+				"          REC_START_DT = $REC_START_DT,",
+				"          REC_END_DT = '9999-12-31 00:00:00.000',",
+				"          REC_STATUS = 'I',",
+				"          SOURCE_SYSTEM = 'BMSIW',",
+				"          IMG_LST_UPD_DT = currentTimestamp(),",
+				"          IMG_CREATED_DT = currentTimestamp(),",
+				"          DATA_IND = 'LG',",
+				"          ACTIVE_IN_SOURCE_IND = 'Y',",
+				"          Key2 = add(iifNull(Key1,0),NewKey),",
+				"          VERSION = 1) ~> derivedColumn2",
+				"NoChangeRecords@ChangedRecordsForUpdate derive(CURRENT_IND = 'Y',",
+				"          EXTRACT_DT = $EXTRACT_DT,",
+				"          REC_START_DT = $REC_START_DT,",
+				"          REC_END_DT = '9999-12-31 00:00:00.000',",
+				"          SOURCE_SYSTEM = 'BMSIW',",
+				"          IMG_LST_UPD_DT = currentTimestamp(),",
+				"          DATA_IND = 'LG',",
+				"          REC_STATUS = 'I',",
+				"          ACTIVE_IN_SOURCE_IND = 'Y',",
+				"          VERSION = toInteger(byName('existing_' + left($SurrogateKey,instr($SurrogateKey,'_KEY'))+'VERSION'))+1) ~> derivedInserts4ChangedRows",
+				"selectExisting aggregate(Key1 = max(toInteger(byName('existing_' + $SurrogateKey)))) ~> getMaxKey",
+				"NoChangeRecords@NewrecodsForInsert, getMaxKey join(1==1,",
+				"     joinType:'cross',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinGetMaxKey",
+				"derivedColumn2 select(mapColumn(",
+				"          REC_CHECKSUM = columns_hash,",
+				"          each(match(name=='VERSION'),",
+				"               left($SurrogateKey,instr($SurrogateKey,'_KEY'))+'VERSION' = $$),",
+				"          each(match(name=='Key2'),",
+				"               $SurrogateKey = $$),",
+				"          each(match(left(name,8)!='existing'))",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectInsertNewRows",
+				"joinGetMaxKey keyGenerate(output(NewKey as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey1",
+				"derivedInserts4ChangedRows select(mapColumn(",
+				"          REC_CHECKSUM = columns_hash,",
+				"          {'U'} = REC_STATUS,",
+				"          each(match(name=='existing_'+$SurrogateKey),",
+				"               $SurrogateKey = $$),",
+				"          each(match(name=='existing_IMG_CREATED_DT'),",
+				"               'IMG_CREATED_DT' = $$),",
+				"          each(match(name=='VERSION'),",
+				"               left($SurrogateKey,instr($SurrogateKey,'_KEY'))+'VERSION' = $$),",
+				"          each(match(left(name,8)!='existing'))",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> SelectInserts4ChangedRows",
+				"derivedChangedRows4Update select(mapColumn(",
+				"          REC_CHECKSUM = existing_columns_hash,",
+				"          CURRENT_IND,",
+				"          REC_END_DT,",
+				"          IMG_LST_UPD_DT,",
+				"          each(match(name=='existing_'+$SurrogateKey),",
+				"               $SurrogateKey = $$),",
+				"          each(match(name=='existing_'+$NaturalKey),",
+				"               $NaturalKey = $$)",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectChangedRecords4Update",
+				"derivedColumn1 select(mapColumn(",
+				"          REC_CHECKSUM = existing_columns_hash,",
+				"          ACTIVE_IN_SOURCE_IND,",
+				"          IMG_LST_UPD_DT,",
+				"          each(match(name=='existing_'+$SurrogateKey),",
+				"               $SurrogateKey = $$)",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select7",
+				"select7 alterRow(updateIf(true())) ~> alterRow1",
+				"ExistingRowsUpdate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:true,",
+				"     upsertable:false,",
+				"     keys:([$SurrogateKey,'REC_CHECKSUM']),",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     saveOrder: 1,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Update4ChangedRecords",
+				"ExistingRowsInsert sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     saveOrder: 2,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Insert4ChangedRows",
+				"AlterRowInsertsNewRows sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     saveOrder: 3,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> SinkInsert4NewRows",
+				"alterRow1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:true,",
+				"     upsertable:false,",
+				"     keys:([$SurrogateKey,'REC_CHECKSUM']),",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     saveOrder: 4,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Update4SoftDeletedRows"
+			]
+		}
+	}
+}

@@ -1,0 +1,193 @@
+{
+	"name": "DF_BALD0010_ACCTRPTS_DIM",
+	"properties": {
+		"folder": {
+			"name": "PGMP"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "getSourceData"
+				},
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "getLookupData"
+				}
+			],
+			"sinks": [
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "updateTable"
+				},
+				{
+					"linkedService": {
+						"referenceName": "ls_pgmp_rfs_db",
+						"type": "LinkedServiceReference"
+					},
+					"name": "insertTable"
+				}
+			],
+			"transformations": [
+				{
+					"name": "sortedLookupData"
+				},
+				{
+					"name": "updateRows"
+				},
+				{
+					"name": "CDC"
+				},
+				{
+					"name": "mergedData"
+				},
+				{
+					"name": "selectInsertData"
+				},
+				{
+					"name": "addColumns1"
+				},
+				{
+					"name": "addColumns2"
+				},
+				{
+					"name": "selectUpdateData"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          ACCTRPTS_DIM_UID as integer,",
+				"          PRJCT_ID as string,",
+				"          ACCTRPTS_REM_TXT as string,",
+				"          SRC_CRETD_TMS as timestamp,",
+				"          SRC_CRETD_USER_ID as string,",
+				"          SRC_UPDTD_TMS as timestamp,",
+				"          SRC_UPDTD_USER_ID as string,",
+				"          ETL_JOB_ID as integer,",
+				"          ETL_EXCTN_ID as integer,",
+				"          SRC_SYS_DIM_UID as integer,",
+				"          IS_DELETED as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'query',",
+				"     store: 'sqlserver',",
+				"     query: 'Select\\n     ACC.PROC_ID as ACCTRPTS_DIM_UID,\\n     ACC.PROJECT_ID as PRJCT_ID,\\n     cast(ACC.REMARKS as varchar(1024)) as ACCTRPTS_REM_TXT,\\n     ACC.CREATED_TS as SRC_CRETD_TMS,\\n     ACC.CREATED_USERID as SRC_CRETD_USER_ID,\\n     ACC.UPDATED_TS as SRC_UPDTD_TMS,\\n     ACC.UPDATED_USERID as SRC_UPDTD_USER_ID,\\n     JOB.ETL_JOB_ID,\\n     FIL.ETL_EXCTN_ID,\\n     SYS.SRC_SYS_DIM_UID,\\n     case when PDEL.PROC_ID is null then 0 else 1 end as IS_DELETED\\nfrom\\n     APPFUN.ACCTRPTS ACC\\n     inner join\\n     PGMPDM.ZAUX_DATE_TRIGGERS ZDT\\n     on ACC.PROC_ID = ZDT.PROC_ID\\n     left join\\n     PGMPDM.ZAUX_DELD_PROC_ID PDEL\\n     on ACC.PROC_ID = PDEL.PROC_ID\\n     left join\\n     (\\n          Select\\n               coalesce(max(ETL_JOB_ID), -1) as ETL_JOB_ID\\n          from\\n               PGMPDM.ZAUX_ETL_JOBS\\n          where\\n               ETL_JOB_NM = \\'BALD0010_ACCTRPTS_DIM\\'          \\n     ) as JOB\\n     on \\'1\\' = \\'1\\'\\n     left join\\n     (\\n          Select\\n               ETL_EXCTN_ID,\\n               ETL_PARAM_START_TMS,\\n               ETL_PARAM_END_TMS\\n          from\\n               PGMPDM.ZAUX_ETL_EXCTN\\n          where\\n               IS_CURR_IND = \\'Y\\'\\n     ) as FIL\\n     on \\'1\\' = \\'1\\'\\n     left join\\n     (\\n          Select\\n               coalesce(max(SRC_SYS_DIM_UID), -1) as SRC_SYS_DIM_UID\\n          from\\n               PGMPDM.SRC_SYS_DIM\\n          where\\n               SRC_SYS_CD = \\'PGMP\\'               \\n     ) as SYS\\n     on \\'1\\' = \\'1\\'\\n',",
+				"     isolationLevel: 'READ_UNCOMMITTED') ~> getSourceData",
+				"source(output(",
+				"          LKP_ACCTRPTS_DIM_UID as integer,",
+				"          LKP_PRJCT_ID as string,",
+				"          LKP_ACCTRPTS_REM_TXT as string,",
+				"          LKP_SRC_CRETD_TMS as timestamp,",
+				"          LKP_SRC_CRETD_USER_ID as string,",
+				"          LKP_SRC_UPDTD_TMS as timestamp,",
+				"          LKP_SRC_UPDTD_USER_ID as string,",
+				"          LKP_SRC_SYS_DIM_UID as integer,",
+				"          LKP_ETL_JOB_ID as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'query',",
+				"     store: 'sqlserver',",
+				"     query: 'Select\\n     S.ACCTRPTS_DIM_UID as LKP_ACCTRPTS_DIM_UID,\\n     S.PRJCT_ID as LKP_PRJCT_ID,\\n     S.ACCTRPTS_REM_TXT as LKP_ACCTRPTS_REM_TXT,\\n     S.SRC_CRETD_TMS as LKP_SRC_CRETD_TMS,\\n     S.SRC_CRETD_USER_ID as LKP_SRC_CRETD_USER_ID,\\n     S.SRC_UPDTD_TMS as LKP_SRC_UPDTD_TMS,\\n     S.SRC_UPDTD_USER_ID as LKP_SRC_UPDTD_USER_ID,\\n     S.SRC_SYS_DIM_UID as LKP_SRC_SYS_DIM_UID,\\n     S.ETL_JOB_ID as LKP_ETL_JOB_ID\\nfrom\\n     PGMPDM.ACCTRPTS_DIM S\\n     inner join\\n     PGMPDM.ZAUX_DATE_TRIGGERS ZDT\\n     on S.ACCTRPTS_DIM_UID = ZDT.PROC_ID     \\n     ',",
+				"     isolationLevel: 'READ_UNCOMMITTED') ~> getLookupData",
+				"getLookupData sort(asc(LKP_ACCTRPTS_DIM_UID, false)) ~> sortedLookupData",
+				"selectUpdateData alterRow(updateIf(true())) ~> updateRows",
+				"mergedData split(ACCTRPTS_DIM_UID==LKP_ACCTRPTS_DIM_UID,",
+				"     disjoint: false) ~> CDC@(dataToBeUpdated, dataToBeInserted)",
+				"getSourceData, sortedLookupData join(ACCTRPTS_DIM_UID == LKP_ACCTRPTS_DIM_UID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> mergedData",
+				"addColumns2 select(mapColumn(",
+				"          ACCTRPTS_DIM_UID,",
+				"          PRJCT_ID,",
+				"          ACCTRPTS_REM_TXT,",
+				"          SRC_CRETD_TMS,",
+				"          SRC_CRETD_USER_ID,",
+				"          SRC_UPDTD_TMS,",
+				"          SRC_UPDTD_USER_ID,",
+				"          ETL_JOB_ID,",
+				"          ETL_EXCTN_ID,",
+				"          SRC_SYS_DIM_UID,",
+				"          IS_DELETED,",
+				"          ROW_STAT_CD,",
+				"          DM_CRETD_USER_ID,",
+				"          DM_CRETD_TMS,",
+				"          DM_UPDTD_USER_ID,",
+				"          DM_UPDTD_TMS",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectInsertData",
+				"CDC@dataToBeUpdated derive(ROW_STAT_CD = iif(IS_DELETED == 1, 'D', 'U'),",
+				"          DM_CRETD_USER_ID = \"dsdam\",",
+				"          DM_UPDTD_USER_ID = \"dsdam\",",
+				"          DM_UPDTD_TMS = currentTimestamp()) ~> addColumns1",
+				"CDC@dataToBeInserted derive(ROW_STAT_CD = iif(IS_DELETED == 1, 'D', 'I'),",
+				"          DM_CRETD_USER_ID = \"dsdam\",",
+				"          DM_CRETD_TMS = currentTimestamp(),",
+				"          DM_UPDTD_USER_ID = \"dsdam\",",
+				"          DM_UPDTD_TMS = currentTimestamp()) ~> addColumns2",
+				"addColumns1 select(mapColumn(",
+				"          ACCTRPTS_DIM_UID,",
+				"          PRJCT_ID,",
+				"          ACCTRPTS_REM_TXT,",
+				"          SRC_CRETD_TMS,",
+				"          SRC_CRETD_USER_ID,",
+				"          SRC_UPDTD_TMS,",
+				"          SRC_UPDTD_USER_ID,",
+				"          ETL_JOB_ID,",
+				"          ETL_EXCTN_ID,",
+				"          SRC_SYS_DIM_UID,",
+				"          ROW_STAT_CD,",
+				"          DM_CRETD_USER_ID,",
+				"          DM_UPDTD_USER_ID,",
+				"          DM_UPDTD_TMS",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectUpdateData",
+				"updateRows sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table',",
+				"     store: 'sqlserver',",
+				"     schemaName: 'PGMPDM',",
+				"     tableName: 'ACCTRPTS_DIM',",
+				"     insertable: false,",
+				"     updateable: true,",
+				"     deletable: false,",
+				"     upsertable: false,",
+				"     keys:['ACCTRPTS_DIM_UID'],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     saveOrder: 0,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     preCommands: [],",
+				"     postCommands: []) ~> updateTable",
+				"selectInsertData sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table',",
+				"     store: 'sqlserver',",
+				"     schemaName: 'PGMPDM',",
+				"     tableName: 'ACCTRPTS_DIM',",
+				"     insertable: true,",
+				"     updateable: false,",
+				"     deletable: false,",
+				"     upsertable: false,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> insertTable"
+			]
+		}
+	}
+}

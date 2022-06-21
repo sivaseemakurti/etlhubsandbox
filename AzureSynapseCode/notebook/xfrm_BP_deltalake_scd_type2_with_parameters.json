@@ -1,0 +1,254 @@
+{
+	"name": "xfrm_BP_deltalake_scd_type2_with_parameters",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "56ac7253-7a46-47ec-b49f-f3cd1ec994f1"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"#import necessary python libraries\r\n",
+					"\r\n",
+					"from azure.storage.blob import BlobClient\r\n",
+					"import pandas as pd\r\n",
+					"from io import StringIO\r\n",
+					"from pyspark.sql.functions import md5, concat_ws\r\n",
+					"from sqlite3 import connect\r\n",
+					"from pyspark.sql import functions as F\r\n",
+					"#conn = connect(':memory:')\r\n",
+					"\r\n",
+					"from pyspark.sql import SparkSession \r\n",
+					"from pyspark.sql.types import * \r\n",
+					"from delta.tables import *\r\n",
+					"#import os\r\n",
+					"import sys\r\n",
+					"\r\n",
+					"#Read data from adls csv file extracted from source at https://adls4fsoetlhubdevuseast.blob.core.windows.net/customer/BUSPARTNER_DIM.csv\r\n",
+					"\r\n",
+					"account_name = 'adls4fsoetlhubdevuseast' # fill in your primary account name \r\n",
+					"container_name = 'customer' # fill in your container name \r\n",
+					"relative_path = '' # fill in your relative folder path \r\n",
+					"\r\n",
+					"adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \r\n",
+					"print('Primary storage account path: ' + adls_path) \r\n",
+					"\r\n",
+					"# Read a csv file \r\n",
+					"csv_path = adls_path + 'BUSPARTNER_DIM_UPD.csv' \r\n",
+					"incrementalData_DF = spark.read.csv(csv_path, header = 'true')\r\n",
+					"\r\n",
+					"tablename=\"etlhubConfirmed.business_partner\"\r\n",
+					"natural_key=\"BUSINESS_PARTNER_ID\"\r\n",
+					"keycolumn=\"BUSINESS_PARTNER_KEY\"\r\n",
+					"#columns1 = [\"BUS_PARTNER_NM\"]\r\n",
+					"#columnsDF=spark.createDataFrame(incrementalData_DF)\r\n",
+					"col_list=[]\r\n",
+					"for i in incrementalData_DF.columns:\r\n",
+					"    col_list.append(i)\r\n",
+					"#incrementalData_DF.show()\r\n",
+					"#print (col_list)\r\n",
+					"\r\n",
+					"# Add a checsum column to help identify the changed rows\r\n",
+					"\r\n",
+					"incrementalData_DF1 = incrementalData_DF.withColumn(\"nk_hash\",md5(natural_key))\r\n",
+					"incrementalData_DF2 = incrementalData_DF1.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\r\n",
+					"#incrementalData_DF2.show()\r\n",
+					"\r\n",
+					"incrementalData_DF2.createOrReplaceTempView(\"incrementalData_DF2\")\r\n",
+					"\r\n",
+					"#Create a deltalake table with necessary columns\r\n",
+					"\r\n",
+					"#incrementalData_DF2.show()\r\n",
+					"\r\n",
+					"existingDataDF=spark.sql(\"SELECT * FROM {}  WHERE CURRENT_IND='Y'\".format(tablename))\r\n",
+					"#existingDF.createOrReplaceTempView('existingDF')\r\n",
+					"#existingDataDF.show()\r\n",
+					"\r\n",
+					"existingMaxKeyDF=spark.sql(\"SELECT MAX({}) existing_MAX_KEY from {} WHERE CURRENT_IND='Y'\".format(keycolumn,tablename))\r\n",
+					"#existingMaxKeyDF.show()\r\n",
+					"\r\n",
+					"# prefix all columns from target table with 'existing_'. This will help to differentiate columns when incremental and existing DF's are joined\r\n",
+					"\r\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\r\n",
+					"#existingDataDF1.printSchema()\r\n",
+					"\r\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF1')\r\n",
+					"#existingDataDF1.show()\r\n",
+					"\r\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.BUSINESS_PARTNER_ID == existingDataDF1.existing_BUSINESS_PARTNER_ID, \"fullouter\") \r\n",
+					"fullJoin2=fullJoin1.join(existingMaxKeyDF,None,\"CROSS\")\r\n",
+					"\r\n",
+					"fullJoin2.createOrReplaceTempView('fullJoin')\r\n",
+					"#Insert for New rows which are missing in target and present in source based on Natural Key.\r\n",
+					"#fullJoin2.show()\r\n",
+					"qry= \"\"\"\r\n",
+					"INSERT INTO {}\r\n",
+					"select COALESCE(A.existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS BUSINESS_PARTNER_KEY,1 as BUSINESS_PARTNER_VERSION , \r\n",
+					"A.BUSINESS_PARTNER_ID,A.BUS_PARTNER_NM,'' as AGR_BUS_PARTNER_ID,'' as AGR_BUS_PARTNER_NM,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \r\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'BMSIW' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \r\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT,'LG' AS DATA_IND, \r\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \r\n",
+					"from fullJoin A \r\n",
+					"LEFT JOIN etlhubConfirmed.BUSINESS_PARTNER B\r\n",
+					"ON A.BUSINESS_PARTNER_ID=B.BUSINESS_PARTNER_ID\r\n",
+					"AND CURRENT_IND='Y'\r\n",
+					"WHERE existing_REC_CHECKSUM is null\r\n",
+					"AND COALESCE(B.REC_CHECKSUM,'') <> COALESCE(A.column_hash,'')\r\n",
+					";\r\n",
+					"\"\"\"\r\n",
+					"spark.sql(qry.format(tablename))\r\n",
+					"\r\n",
+					"qry1= \"\"\"\r\n",
+					"INSERT INTO {} \r\n",
+					"select existing_BUSINESS_PARTNER_KEY,1+existing_BUSINESS_PARTNER_VERSION as BUSINESS_PARTNER_VERSION , \r\n",
+					"A.BUSINESS_PARTNER_ID,A.BUS_PARTNER_NM,'' as AGR_BUS_PARTNER_ID,'' as AGR_BUS_PARTNER_NM,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \r\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'BMSIW' AS SOURCE_SYSTEM, A.column_hash as REC_CHECKSUM, \r\n",
+					"'U' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT , 'LG' AS DATA_IND, \r\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \r\n",
+					"from fullJoin A \r\n",
+					"WHERE LOWER(BUSINESS_PARTNER_ID) = LOWER(existing_BUSINESS_PARTNER_ID) and LOWER(column_hash) <> LOWER(existing_REC_CHECKSUM)\r\n",
+					"AND NOT EXISTS\r\n",
+					"(SELECT 1 FROM etlhubConfirmed.BUSINESS_PARTNER B\r\n",
+					"WHERE A.BUSINESS_PARTNER_ID=B.BUSINESS_PARTNER_ID\r\n",
+					"and b.CURRENT_IND='Y'\r\n",
+					"AND A.column_hash=B.REC_CHECKSUM)\r\n",
+					";\r\n",
+					"\"\"\"\r\n",
+					"spark.sql(qry1.format(tablename))\r\n",
+					"\r\n",
+					"qry2=\"\"\"\r\n",
+					"MERGE INTO {} A\r\n",
+					"USING fullJoin B\r\n",
+					"ON A.BUSINESS_PARTNER_ID = B.BUSINESS_PARTNER_ID\r\n",
+					"AND LOWER(B.BUSINESS_PARTNER_ID) = LOWER(B.existing_BUSINESS_PARTNER_ID) and LOWER(B.column_hash) <> LOWER(B.existing_rec_checksum)\r\n",
+					"AND A.CURRENT_IND='Y' AND A.REC_START_DT=b.existing_REC_START_DT\r\n",
+					"WHEN MATCHED THEN UPDATE SET CURRENT_IND='N'\r\n",
+					"    ,REC_END_DT= existing_REC_START_DT -  INTERVAL 5 seconds --current_timestamp --existing_REC_START_DT-1\r\n",
+					"    ,IMG_LST_UPD_DT=current_timestamp;\r\n",
+					"\"\"\"\r\n",
+					"spark.sql(qry2.format(tablename))\r\n",
+					"#Soft deletes or no longer active in source\r\n",
+					"qry3=\"\"\"\r\n",
+					"MERGE INTO {} A\r\n",
+					"USING fullJoin B\r\n",
+					"ON A.BUSINESS_PARTNER_ID = B.existing_BUSINESS_PARTNER_ID\r\n",
+					"AND B.BUSINESS_PARTNER_ID is NULL\r\n",
+					"AND A.CURRENT_IND='Y' AND A.ACTIVE_IN_SOURCE_IND='Y' AND A.REC_START_DT=b.existing_REC_START_DT\r\n",
+					"WHEN MATCHED THEN UPDATE SET ACTIVE_IN_SOURCE_IND='N'\r\n",
+					"    --,REC_END_DT= existing_REC_START_DT -  INTERVAL 5 seconds --current_timestamp --existing_REC_START_DT-1\r\n",
+					"    ,IMG_LST_UPD_DT=current_timestamp;\r\n",
+					"\"\"\"\r\n",
+					"spark.sql(qry3.format(tablename))\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"--INSERTS OR NEW ROWS\r\n",
+					"select 'New Rows for Insert After Update' as Title, COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS BUSINESS_PARTNER_KEY1, A.* from fullJoin A WHERE existing_BUSINESS_PARTNER_KEY is null;\r\n",
+					"--UPDATE ROWS\r\n",
+					"select 'Changed Rows for Update/Insert After Update' as Title, a.* from fullJoin a WHERE LOWER(BUSINESS_PARTNER_ID) = LOWER(existing_BUSINESS_PARTNER_ID) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \r\n",
+					"select * from etlhubConfirmed.BUSINESS_PARTNER\r\n",
+					"where current_ind = 'N'    --BUSINESS_PARTNER_ID = 'RAUE000167'\r\n",
+					"--update etlhubConfirmed.BUSINESS_PARTNER\r\n",
+					"--set BUS_PARTNER_NM = 'Updated with Azure'\r\n",
+					"--where BUSINESS_PARTNER_ID = 'SUSE087302'"
+				],
+				"attachments": null,
+				"execution_count": 27
+			}
+		]
+	}
+}

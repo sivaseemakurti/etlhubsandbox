@@ -1,0 +1,90 @@
+{
+	"name": "P_ACCTRPTS_DIM",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_pgmp_rfs_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "ACCTRPTS_DIM_UID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PRJCT_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "ACCTRPTS_REM_TXT",
+				"type": "varchar"
+			},
+			{
+				"name": "SRC_CRETD_TMS",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "SRC_CRETD_USER_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "SRC_UPDTD_TMS",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "SRC_UPDTD_USER_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "ROW_STAT_CD",
+				"type": "char"
+			},
+			{
+				"name": "SRC_SYS_DIM_UID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ETL_JOB_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ETL_EXCTN_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "DM_CRETD_TMS",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "DM_CRETD_USER_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "DM_UPDTD_TMS",
+				"type": "datetime2",
+				"scale": 6
+			},
+			{
+				"name": "DM_UPDTD_USER_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "ORIG_ORG",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "PGMPDM",
+			"table": "ACCTRPTS_DIM"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

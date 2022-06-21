@@ -1,0 +1,41 @@
+{
+	"name": "DelimitedText2",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls_project_dimension",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "sell_cycle_tgt.csv",
+				"fileSystem": "project"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "SIEBEL_SALES_STAGE_CODE",
+				"type": "String"
+			},
+			{
+				"name": "SIEBEL_SALES_STAGE_NAME",
+				"type": "String"
+			},
+			{
+				"name": "SSM_STEP_NO",
+				"type": "String"
+			},
+			{
+				"name": "SSM_STEP_NAME",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

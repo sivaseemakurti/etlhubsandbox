@@ -1,0 +1,117 @@
+{
+	"name": "project_dimension_load",
+	"properties": {
+		"activities": [
+			{
+				"name": "scdType2_Generict_Dimension_Load",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "scdType2_Generict_Dimension_Load",
+						"type": "DataFlowReference",
+						"parameters": {
+							"NaturalKey": {
+								"value": "'@{pipeline().parameters.NaturalKey}'",
+								"type": "Expression"
+							},
+							"NonkeyColumns": {
+								"value": "'@{pipeline().parameters.NonkeyColumns}'",
+								"type": "Expression"
+							},
+							"EXTRACT_DT": "currentTimestamp()",
+							"REC_START_DT": "currentTimestamp()",
+							"SurrogateKey": {
+								"value": "'@{pipeline().parameters.SurrogateKey}'",
+								"type": "Expression"
+							},
+							"DimTableName": {
+								"value": "'@{pipeline().parameters.Table_Name1}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"genericInput": {
+								"FolderName": {
+									"value": "@pipeline().parameters.FolderName",
+									"type": "Expression"
+								},
+								"fileName": "EnterDimensionFileName"
+							},
+							"genericDimensionTable": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Table_Name1",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"Update4ChangedRecords": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Table_Name1",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"Insert4ChangedRows": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Table_Name1",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"SinkInsert4NewRows": {
+								"DimTableName1": {
+									"value": "@pipeline().parameters.Table_Name1",
+									"type": "Expression"
+								},
+								"Key1": "'key'"
+							},
+							"Update4SoftDeletedRows": {
+								"DimTableName1": "EnterDimensionTableName",
+								"Key1": "'key'"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"parameters": {
+			"SurrogateKey": {
+				"type": "string",
+				"defaultValue": "PROJECT_KEY"
+			},
+			"NaturalKey": {
+				"type": "string",
+				"defaultValue": "PROJECT_ID"
+			},
+			"NonkeyColumns": {
+				"type": "string",
+				"defaultValue": "FINANCIAL_COUNTRY_CD,LEDGER_CD,OFFERING_COMPONENT_CD,OPPORTUNITY_NUM,PROJECT_DESC,SIGNINGS_CD,SIGNINGS_DESC,BUSINESS_TYPE_CD,BUSINESS_TYPE_DESC,PROJECT_STATUS_CD,PROJECT_STATUS_DESC,PROJECT_CUSTOMER_NO,PROJECT_CREATION_DATE,ACCOUTNING_DIVISION,RESPONSIBLE_SERV_OFFICE"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "project"
+			},
+			"Table_Name1": {
+				"type": "string",
+				"defaultValue": "DHT_PROJECT_SIV"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-05-23T07:30:09Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

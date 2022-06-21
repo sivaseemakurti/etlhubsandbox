@@ -1,0 +1,17 @@
+{
+	"name": "DBXDH_DHTS_SELL_CYCLE",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asdb_etlhub_confirmed",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "DBXDH",
+			"table": "DHTS_SELL_CYCLE"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

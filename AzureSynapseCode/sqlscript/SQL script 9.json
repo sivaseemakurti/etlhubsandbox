@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 9",
+	"properties": {
+		"content": {
+			"query": "SELECT TOP (100) [SIEBEL_SALES_STAGE_CODE]\n,[SIEBEL_SALES_STAGE_NAME]\n,[SSM_STEP_NO]\n,[SSM_STEP_NAME]\n FROM [etlhubconfirmed].[dbo].[dht_sell_cycle]",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "etlhubconfirmed",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

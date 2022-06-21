@@ -1,0 +1,69 @@
+{
+	"name": "appfun_acctrpts",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "linkedService1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "ACCTRPTS_202205311910.csv",
+				"container": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "PROC_ID",
+				"type": "String"
+			},
+			{
+				"name": "CNTRY",
+				"type": "String"
+			},
+			{
+				"name": "PROJECT_ID",
+				"type": "String"
+			},
+			{
+				"name": "DUE_DATE",
+				"type": "String"
+			},
+			{
+				"name": "REVISD_DUE_DATE",
+				"type": "String"
+			},
+			{
+				"name": "REMARKS",
+				"type": "String"
+			},
+			{
+				"name": "ORIG_ORG",
+				"type": "String"
+			},
+			{
+				"name": "CREATED_TS",
+				"type": "String"
+			},
+			{
+				"name": "CREATED_USERID",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_TS",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_USERID",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

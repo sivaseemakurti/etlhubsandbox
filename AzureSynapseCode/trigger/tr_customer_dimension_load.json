@@ -1,0 +1,25 @@
+{
+	"name": "tr_customer_dimension_load",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "pl_deltalake_customer_dimension",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Minute",
+				"interval": 2,
+				"startTime": "2022-05-31T16:58:00",
+				"endTime": "2022-05-31T17:03:00",
+				"timeZone": "India Standard Time"
+			}
+		}
+	}
+}

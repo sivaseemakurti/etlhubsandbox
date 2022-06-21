@@ -1,0 +1,98 @@
+{
+	"name": "AzureSqlTable2",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asdb_etlhub_confirmed",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "CUSTOMER_KEY",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "VERSION",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "CUSTOMER_NO",
+				"type": "varchar"
+			},
+			{
+				"name": "FINANCIAL_COUNTRY_CD",
+				"type": "varchar"
+			},
+			{
+				"name": "GBG_ID",
+				"type": "varchar"
+			},
+			{
+				"name": "CUSTOMER_NAME",
+				"type": "varchar"
+			},
+			{
+				"name": "CURRENT_IND",
+				"type": "varchar"
+			},
+			{
+				"name": "EXTRACT_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "REC_START_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "REC_END_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "SOURCE_SYSTEM",
+				"type": "varchar"
+			},
+			{
+				"name": "REC_CHECKSUM",
+				"type": "varchar"
+			},
+			{
+				"name": "REC_STATUS",
+				"type": "varchar"
+			},
+			{
+				"name": "IMG_LST_UPD_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "IMG_CREATED_DT",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "DATA_IND",
+				"type": "varchar"
+			},
+			{
+				"name": "ACTIVE_IN_SOURCE_IND",
+				"type": "char"
+			}
+		],
+		"typeProperties": {
+			"schema": "DBXDH",
+			"table": "DHT_CUSTOMER"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

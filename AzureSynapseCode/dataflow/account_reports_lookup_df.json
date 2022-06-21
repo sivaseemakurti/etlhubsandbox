@@ -1,0 +1,111 @@
+{
+	"name": "account_reports_lookup_df",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_acctrpts_dim",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmAcctrptsDim"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_zaux_date_triggers",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmZauxDateTriggers"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "account_reports_lookup",
+						"type": "DatasetReference"
+					},
+					"name": "lookupAcctrpts"
+				}
+			],
+			"transformations": [
+				{
+					"name": "accIJzdt"
+				},
+				{
+					"name": "selectLookupCols"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          ACCTRPTS_DIM_UID as string,",
+				"          PRJCT_ID as string,",
+				"          ACCTRPTS_REM_TXT as string,",
+				"          SRC_CRETD_TMS as string,",
+				"          SRC_CRETD_USER_ID as string,",
+				"          SRC_UPDTD_TMS as string,",
+				"          SRC_UPDTD_USER_ID as string,",
+				"          ROW_STAT_CD as string,",
+				"          SRC_SYS_DIM_UID as string,",
+				"          ETL_JOB_ID as string,",
+				"          ETL_EXCTN_ID as string,",
+				"          DM_CRETD_TMS as string,",
+				"          DM_CRETD_USER_ID as string,",
+				"          DM_UPDTD_TMS as string,",
+				"          DM_UPDTD_USER_ID as string,",
+				"          ORIG_ORG as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmAcctrptsDim",
+				"source(output(",
+				"          PROC_ID as string,",
+				"          CRETD_DT as string,",
+				"          RCVD_DT as string,",
+				"          PRPSL_SENT_TO_CLNT_DT as string,",
+				"          PRPSL_DSPSN_DT as string,",
+				"          PRPSL_ACCPTD_DT as string,",
+				"          IMPLMTN_READY_DT as string,",
+				"          IMPLMTN_CLOSE_OUT_DT as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmZauxDateTriggers",
+				"pgmpdmAcctrptsDim, pgmpdmZauxDateTriggers join(ACCTRPTS_DIM_UID == PROC_ID,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> accIJzdt",
+				"accIJzdt select(mapColumn(",
+				"          ACCTRPTS_DIM_UID,",
+				"          PRJCT_ID,",
+				"          ACCTRPTS_REM_TXT,",
+				"          SRC_CRETD_TMS,",
+				"          SRC_CRETD_USER_ID,",
+				"          SRC_UPDTD_TMS,",
+				"          SRC_UPDTD_USER_ID,",
+				"          ROW_STAT_CD,",
+				"          SRC_SYS_DIM_UID,",
+				"          ETL_JOB_ID,",
+				"          ETL_EXCTN_ID,",
+				"          DM_CRETD_TMS,",
+				"          DM_CRETD_USER_ID,",
+				"          DM_UPDTD_TMS,",
+				"          DM_UPDTD_USER_ID,",
+				"          ORIG_ORG",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectLookupCols",
+				"selectLookupCols sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     partitionFileNames:['lookupData.csv'],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> lookupAcctrpts"
+			]
+		}
+	}
+}

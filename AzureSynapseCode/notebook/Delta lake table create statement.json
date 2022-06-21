@@ -1,0 +1,166 @@
+{
+	"name": "Delta lake table create statement",
+	"properties": {
+		"folder": {
+			"name": "Siva"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "c6e77609-c7a1-4757-9f05-a0341d00f594"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"-- DBXDH.DHT_PROJECT definition\n",
+					"\n",
+					"--drop table etlhubConfirmed.customer_dimension;\n",
+					"\n",
+					"-- Create Delta Lake table, define schema and location\n",
+					"/*\n",
+					"CREATE TABLE IF NOT EXISTS etlhubConfirmed.customer_dimension (\n",
+					"    CUSTOMER_KEY INT NOT NULL,\n",
+					"\tVERSION INT ,\n",
+					"\tCUSTOMER_NO STRING ,\n",
+					"\tFINANCIAL_COUNTRY_CD varchar(10) ,\n",
+					"\tGBG_ID varchar(10)  ,\n",
+					"\tCUSTOMER_NAME varchar(30)  ,\n",
+					"\tCURRENT_IND varchar(1)  ,\n",
+					"\tEXTRACT_DT TIMESTAMP ,\n",
+					"\tREC_START_DT TIMESTAMP ,\n",
+					"\tREC_END_DT TIMESTAMP ,\n",
+					"\tSOURCE_SYSTEM varchar(50)  ,\n",
+					"\tREC_CHECKSUM varchar(32)  ,\n",
+					"\tREC_STATUS varchar(1)  ,\n",
+					"\tIMG_LST_UPD_DT TIMESTAMP NOT NULL,\n",
+					"\tIMG_CREATED_DT TIMESTAMP NOT NULL,\n",
+					"\tDATA_IND varchar(10)  ,\n",
+					"\tACTIVE_IN_SOURCE_IND char(1)  \n",
+					")\n",
+					"USING DELTA\n",
+					"PARTITIONED BY (CURRENT_IND)\n",
+					"-- specify data lake folder location\n",
+					"LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/data/customer'\n",
+					"\n",
+					"*/\n",
+					"\n",
+					"\n",
+					"\n",
+					"\n",
+					"--rename INTEGER with INT\n",
+					"--replace VARCHAR, CHAR as STRING\n",
+					"--Default is not supported\n",
+					"CREATE TABLE IF NOT EXISTS ETLHUBCONFIRMED.DHT_PROJECT  (\n",
+					"\t\t  PROJECT_KEY INT NOT NULL , \n",
+					"\t\t  PROJECT_VERSION INT NOT NULL , \n",
+					"\t\t  PROJECT_ID STRING  , \n",
+					"\t\t  FINANCIAL_COUNTRY_CD STRING , \n",
+					"\t\t  LEDGER_CD STRING  , \n",
+					"\t\t  OFFERING_COMPONENT_CD STRING  , \n",
+					"\t\t  OPPORTUNITY_NUM STRING  , \n",
+					"\t\t  PROJECT_DESC STRING  , \n",
+					"\t\t  SIGNINGS_CD STRING  , \n",
+					"\t\t  SIGNINGS_DESC STRING  , \n",
+					"\t\t  BUSINESS_TYPE_CD STRING , \n",
+					"\t\t  BUSINESS_TYPE_DESC STRING , \n",
+					"\t\t  PROJECT_STATUS_CD STRING  , \n",
+					"\t\t  PROJECT_STATUS_DESC STRING  , \n",
+					"\t\t  PROJECT_CUSTOMER_NO STRING   , \n",
+					"\t\t  PROJECT_CREATION_DATE DATE  , \n",
+					"\t\t  ACCOUTNING_DIVISION STRING  , \n",
+					"\t\t  RESPONSIBLE_SERV_OFFICE STRING , \n",
+					"\t\t  PROJECT_LOCAL_CURRENCY STRING , \n",
+					"\t\t  LOCAL_ATTRIBUTE07 STRING , \n",
+					"\t\t  CURRENT_IND STRING  NOT NULL , \n",
+					"\t\t  EXTRACT_DT TIMESTAMP  , \n",
+					"\t\t  REC_START_DT TIMESTAMP  , \n",
+					"\t\t  REC_END_DT TIMESTAMP  , \n",
+					"\t\t  SOURCE_SYSTEM STRING  , \n",
+					"\t\t  REC_CHECKSUM STRING , \n",
+					"\t\t  REC_STATUS STRING  , \n",
+					"\t\t  IMG_LST_UPD_DT TIMESTAMP, -- NOT NULL GENERATED ALWAYS AS CURRENT TIMESTAMP , \n",
+					"\t\t  IMG_CREATED_DT TIMESTAMP, -- NOT NULL GENERATED ALWAYS AS CURRENT TIMESTAMP , \n",
+					"\t\t  SERVICE_TYPE_CD STRING  , \n",
+					"\t\t  SERVICE_TYPE_DESC STRING , \n",
+					"\t\t  RATE_TYPE_CD STRING , \n",
+					"\t\t  RATE_TYPE_DESC STRING , \n",
+					"\t\t  CHARGE_CD STRING  , \n",
+					"\t\t  CHARGE_TO_SERVICE_OFFICE_CD STRING   , \n",
+					"\t\t  CHARGE_TO_SERVICE_OFFICE_DESC STRING   , \n",
+					"\t\t  CUSTOMER_PROJECT_DESC STRING  , \n",
+					"\t\t  DESCRIPTION_CD STRING  , \n",
+					"\t\t  PROJECT_TITLE STRING , \n",
+					"\t\t  CUSTOMER_TYPE_CD STRING , \n",
+					"\t\t  CUSTOMER_TYPE_DESC STRING , \n",
+					"\t\t  SAP_STATUS_CD STRING , \n",
+					"\t\t  DATA_IND STRING   , \n",
+					"\t\t  CONTACT_NM STRING   , \n",
+					"\t\t  LABOR_CLAIM_IND STRING   , \n",
+					"\t\t  COMMENT_TEXT STRING   , \n",
+					"\t\t  BID_AND_PROPOSAL_PROJECT_IND STRING   , \n",
+					"\t\t  SIGNINGS_EXCEPTION_REASON_CODE STRING , \n",
+					"\t\t  CHANNEL_INDICATOR STRING,\n",
+					"          ACTIVE_IN_SOURCE_IND STRING  )   \n",
+					"\t\t  USING DELTA\n",
+					"\t\t  PARTITIONED BY (PROJECT_KEY)\n",
+					"\t\t  LOCATION 'abfss://deltalake@adls4fsoetlhubdevuseast.dfs.core.windows.net/deltalake/data/project_dimension'\n",
+					" ;"
+				],
+				"attachments": null,
+				"execution_count": 4
+			}
+		]
+	}
+}

@@ -1,0 +1,347 @@
+{
+	"name": "Notebook_Siva2",
+	"properties": {
+		"folder": {
+			"name": "Siva"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "bc9a73e8-16ca-4335-821d-6b5e19c920d4"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Final Code SCD Type2"
+				],
+				"attachments": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.storage.blob import BlobClient\n",
+					"import pandas as pd\n",
+					"from io import StringIO\n",
+					"from pyspark.sql.functions import md5, concat_ws\n",
+					"from sqlite3 import connect\n",
+					"from pyspark.sql import functions as F\n",
+					"conn = connect(':memory:')\n",
+					"natural_key=\"CUSTOMER_NO\"\n",
+					"columns = [\"FINANCIAL_COUNTRY_CD\",\"CUSTOMER_DESC\",\"GBG_ID\"]\n",
+					"sas_url = \"https://adls4fsoetlhubdevuseast.blob.core.windows.net/customer/customer_data.csv?sv=2020-10-02&st=2022-05-15T14%3A59%3A08Z&se=2023-05-16T14%3A59%3A00Z&sr=b&sp=r&sig=RYE103C28iVzI4%2BTmiDyMqJhGGNqBooxZgUc4LITF4U%3D\"\n",
+					"blob_client = BlobClient.from_blob_url(sas_url)\n",
+					"blob_data = blob_client.download_blob()\n",
+					"incrementalData = pd.read_csv(StringIO(blob_data.content_as_text()))\n",
+					"#print(df)\n",
+					"incrementalData_DF=spark.createDataFrame(incrementalData)\n",
+					"col_list=[]\n",
+					"for i in incrementalData_DF.columns:\n",
+					"    col_list.append(i)\n",
+					"    #print (col_list)\n",
+					"incrementalData_DF1 = incrementalData_DF.withColumn(\"nk_hash\",md5(natural_key))\n",
+					"incrementalData_DF2 = incrementalData_DF1.withColumn(\"column_hash\", md5(concat_ws(\"\", *col_list)))\n",
+					"#sell_cyclecolhashDF.show()\n",
+					"incrementalData_DF2.createOrReplaceTempView(\"incrementalData_DF2\")\n",
+					"\n",
+					"#jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;database=dsqlpoolKyn001494DevEtlHubEUS001;user=undefined@asa-kyn-001494-dev-eus-001;password={your_password_here};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.sql.azuresynapse.net;loginTimeout=30;\n",
+					"existingDataDF = spark.read.format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"    .option(\"query\", \"SELECT MAX(CUSTOMER_KEY) OVER (ORDER BY CUSTOMER_KEY  ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING ) AS MAX_KEY, LOWER(CONVERT(VARCHAR(32),HashBytes('MD5', CUSTOMER_NO),2)) as existing_nk_hash,tgt.* FROM DBXDH.DHT_CUSTOMER as tgt WHERE CURRENT_IND='Y'\") \\\n",
+					"    .option(\"user\", \"sqladminuser\") \\\n",
+					"    .option(\"password\", \"try2find$5\") \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .load()\n",
+					"#existingDataDF1 = existingDataDF.select([F.col(c).alias(\"`\"'existing_'+c+\"`\") for c in existingDataDF.columns])\n",
+					"existingDataDF1 = existingDataDF.select([F.col(c).alias('existing_'+c) for c in existingDataDF.columns])\n",
+					"#existingDataDF1.printSchema()\n",
+					"existingDataDF1.createOrReplaceTempView('existingDataDF')\n",
+					"\n",
+					"fullJoin1=incrementalData_DF2.join(existingDataDF1,incrementalData_DF2.CUSTOMER_NO == existingDataDF1.existing_CUSTOMER_KEY, \"fullouter\") \n",
+					"fullJoin1.createOrReplaceTempView('fullJoin')\n",
+					"\n",
+					"#Insert for New rows\n",
+					"\n",
+					"fullJoin2=sqlContext.sql(\"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY,1 as VERSION , \\\n",
+					"CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \\\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM, \\\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \\\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND \\\n",
+					"from fullJoin A WHERE existing_existing_nk_hash is null\")\n",
+					"fullJoin2.createOrReplaceTempView('fullJoin2')\n",
+					"\n",
+					"#insert new rows into database\n",
+					"\n",
+					"fullJoin2.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"dbtable\", \"DBXDH.DHT_CUSTOMER\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"append\") \\\n",
+					"        .save()\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--select * from existingDataDF\n",
+					"\n",
+					"select * from fullJoin2"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"--ALL\n",
+					"SELECT * FROM FULLJOIN;\n",
+					"\n",
+					"--No change records, ignore\n",
+					"select * from fullJoin WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) = LOWER(existing_rec_checksum);\n",
+					"\n",
+					"--INSERTS OR NEW ROWS\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1, A.* from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					"\n",
+					"--Changed records or update old record and insert new with incremented version\n",
+					"select * from fullJoin WHERE WHERE LOWER(nk_hash) = LOWER(existing_existing_nk_hash) and LOWER(column_hash) <> LOWER(existing_rec_checksum);\n",
+					"\n",
+					"\n",
+					"--Soft deletes or rows no longer active in source\n",
+					"select * from fullJoin WHERE WHERE nk_hash is null;\n",
+					"\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1 \n",
+					"select * from fullJoin where existing_existing_nk_hash is null;\n",
+					"\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"--INSERTS OR NEW ROWS\n",
+					"--INSERT INTO DBXDH.DHT_CUSTOMER1\n",
+					"select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION ,\n",
+					"CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT,\n",
+					"CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM,\n",
+					"'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND,\n",
+					"'Y' AS ACTIVE_IN_SOURCE_IND\n",
+					"from fullJoin A WHERE existing_existing_nk_hash is null;\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#test referance\n",
+					"fullJoin1.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"query\", \"INSERT INTO DBXDH.DHT_CUSTOMER1 \\\n",
+					"        select COALESCE(existing_MAX_KEY,0) + ROW_NUMBER () OVER (ORDER BY 1) AS CUSTOMER_KEY1,1 as VERSION , \\\n",
+					"        CUSTOMER_NO,FINANCIAL_COUNTRY_CD,GBG_ID,CUSTOMER_NAME,'Y' AS CURRENT_IND, CURRENT_TIMESTAMP AS EXTRACT_DT, \\\n",
+					"        CURRENT_TIMESTAMP AS REC_START_DT, '9999-12-31 00:00:00.000' as REC_END_DT, 'ESA' AS SOURCE_SYSTEM, column_hash as REC_CHECKSUM, \\\n",
+					"        'I' as REC_STATUS,current_timestamp as IMG_LST_UPD_DT, CURRENT_TIMESTAMP AS IMG_CREATED_DT, 'LG' AS DATA_IND, \\\n",
+					"        'Y' AS ACTIVE_IN_SOURCE_IND \\\n",
+					"        from fullJoin A WHERE existing_existing_nk_hash is null\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"overwrite\") \\\n",
+					"        .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullJoin1.write \\\n",
+					"        .format(\"jdbc\") \\\n",
+					"        .option(\"url\", f\"jdbc:sqlserver://asa-kyn-001494-dev-eus-001.sql.azuresynapse.net:1433;databaseName=dsqlpoolKyn001494DevEtlHubEUS001;\") \\\n",
+					"        .option(\"user\", \"sqladminuser\") \\\n",
+					"        .option(\"password\", \"try2find$5\") \\\n",
+					"        .option(\"dbtable\", \"DBXDH.DHT_CUSTOMER\") \\\n",
+					"        .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\n",
+					"        .mode(\"append\") \\\n",
+					"        .save()"
+				],
+				"attachments": null,
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"\n",
+					"df.write.mode(\"overwrite\") \\\n",
+					"    .format(\"jdbc\") \\\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://localhost:1433;databaseName={database};\") \\\n",
+					"    .option(\"dbtable\", table) \\\n",
+					"    .option(\"user\", user) \\\n",
+					"    .option(\"password\", password) \\\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+					"    .save()"
+				],
+				"attachments": null,
+				"execution_count": null
+			}
+		]
+	}
+}

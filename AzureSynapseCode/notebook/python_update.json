@@ -1,0 +1,261 @@
+{
+	"name": "python_update",
+	"properties": {
+		"folder": {
+			"name": "Srilatha"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "da86b2f5-6733-4b59-8303-2b54d39642f0"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"import pyodbc \r\n",
+					"import sqlalchemy\r\n",
+					"from delta.tables import *\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"import pyspark\r\n",
+					"import sqlparse\r\n",
+					"\r\n",
+					"conn = pyodbc.connect('Driver={SQL Server};'\r\n",
+					"                      'Server=sqlserver-kyn-001494-dev-eus-001.database.windows.net;'\r\n",
+					"                      'Database=sqldb-etlhub-confirmed;'\r\n",
+					"                      'user = sqladminuser;'\r\n",
+					"                      'password = try2find$5;'\r\n",
+					"                      )\r\n",
+					"\r\n",
+					"cursor = conn.cursor()\r\n",
+					"cursor.execute('SELECT SIEBEL_SALES_STAGE_CODE,SIEBEL_SALES_STAGE_NAME,SSM_STEP_NO,SSM_STEP_NAME FROM DBXDH.DHTS_SELL_CYCLE')\r\n",
+					"\r\n",
+					"for i in cursor:\r\n",
+					"    print(i)"
+				],
+				"attachments": null,
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.storage.blob import BlobClient\r\n",
+					"import pandas as pd\r\n",
+					"from io import StringIO\r\n",
+					"import pandas as pd\r\n",
+					"import sqlalchemy\r\n",
+					"from delta.tables import *\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"\r\n",
+					"sellcycletgtDF = spark.read.format(\"jdbc\") \\\r\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://sqlserver-kyn-001494-dev-eus-001.database.windows.net:1433;databaseName=sqldb-etlhub-confirmed;\") \\\r\n",
+					"    .option(\"query\", \"SELECT SIEBEL_SALES_STAGE_CODE,SIEBEL_SALES_STAGE_NAME,SSM_STEP_NO,SSM_STEP_NAME FROM DBXDH.DHTS_SELL_CYCLE as tgt\") \\\r\n",
+					"    .option(\"user\", \"sqladminuser\") \\\r\n",
+					"    .option(\"password\", \"try2find$5\") \\\r\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\r\n",
+					"    .load()\r\n",
+					"\r\n",
+					"sas_url = \"https://adls4fsoetlhubdevuseast.blob.core.windows.net/project/sell_cycle_2022.csv?sp=r&st=2022-05-18T06:38:22Z&se=2022-05-18T14:38:22Z&spr=https&sv=2020-08-04&sr=b&sig=jctwRkZecjg%2Fz%2FlPtH1Z8FWGN0Ge4Rb84SLbNsBNCvs%3D\"\r\n",
+					"\r\n",
+					"blob_client = BlobClient.from_blob_url(sas_url)\r\n",
+					"blob_data = blob_client.download_blob()\r\n",
+					"df = pd.read_csv(StringIO(blob_data.content_as_text()),header = 0)\r\n",
+					"#print(df)\r\n",
+					"#print(df.columns)\r\n",
+					"sparkDF=spark.createDataFrame(df) \r\n",
+					"#sparkDF.columns\r\n",
+					"sparkDF.createOrReplaceTempView('sell_cycle_df')\r\n",
+					"#sparkDF.show()\r\n",
+					"sellcycletgtDF.toDF\r\n",
+					"#sellcycle.show()\r\n",
+					"newAddressesToInsert = sparkDF \\\r\n",
+					".alias(\"updates\") \\\r\n",
+					".join(sellcycletgtDF.alias(\"sell_cycle\"), \"SIEBEL_SALES_STAGE_CODE\") \\\r\n",
+					".selectExpr(\"updates.SIEBEL_SALES_STAGE_CODE\",\"updates.SIEBEL_SALES_STAGE_NAME\",\"updates.SSM_STEP_NO\",\"updates.SSM_STEP_NAME\") \\\r\n",
+					".where(\"sell_cycle.SIEBEL_SALES_STAGE_CODE = updates.SIEBEL_SALES_STAGE_CODE AND updates.SIEBEL_SALES_STAGE_NAME <> sell_cycle.SIEBEL_SALES_STAGE_NAME\")\r\n",
+					"\r\n",
+					"newAddressesToInsert.show()\r\n",
+					"# Stage the update by unioning two sets of rows\r\n",
+					"# 1. Rows that will be inserted in the whenNotMatched clause\r\n",
+					"# 2. Rows that will either update the current addresses of existing customers or insert the new addresses of new customers\r\n",
+					"stagedUpdates = (\r\n",
+					"     newAddressesToInsert\r\n",
+					"    .selectExpr(\"NULL as mergeKey\", \"*\")   # Rows for 1\r\n",
+					"    .union(sparkDF.selectExpr(\"SIEBEL_SALES_STAGE_CODE as mergeKey\", \"*\"))\r\n",
+					"    )\r\n",
+					"#stagedUpdates.show()\r\n",
+					"\r\n",
+					"\r\n",
+					"# Apply SCD Type 2 operation using merge\r\n",
+					"DBXDH.DHTS_SELL_CYCLE.alias(\"sell_cycle\").merge(\r\n",
+					"  stagedUpdates.alias(\"staged_updates\"),\r\n",
+					"  \"sell_cycle.SIEBEL_SALES_STAGE_CODE = mergeKey\") \\\r\n",
+					".whenMatchedUpdate(\r\n",
+					"  condition = \"sell_cycle.SIEBEL_SALES_STAGE_CODE = staged_updates.SIEBEL_SALES_STAGE_CODE AND sell_cycle.SIEBEL_SALES_STAGE_NAME <> staged_updates.SIEBEL_SALES_STAGE_NAME\",\r\n",
+					"  set = {                                      # Set current to false and endDate to source's effective date.\r\n",
+					"   \"SIEBEL_SALES_STAGE_NAME\" : \"false\",\r\n",
+					"   \"SSM_STEP_NO\" : \"false\"\r\n",
+					"  }\r\n",
+					"#).whenNotMatchedInsert(\r\n",
+					"  #values = {\r\n",
+					"    #\"SIEBEL_SALES_STAGE_CODE\": \"staged_updates.SIEBEL_SALES_STAGE_CODE\",\r\n",
+					"    #\"SIEBEL_SALES_STAGE_NAME\": \"staged_updates.SIEBEL_SALES_STAGE_NAME\",\r\n",
+					"    #\"SSM_STEP_NO\": \"staged_updates.SSM_STEP_NO\",\r\n",
+					"    #\"SSM_STEP_NAME\": \"staged_updates.SSM_STEP_NAME\"  # Set current to true along with the new address and its effective date.\r\n",
+					"    # }\r\n",
+					").execute()\r\n",
+					"\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 159
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#sellcycletgtDF.show()\r\n",
+					"#sparkDF.show()\r\n",
+					"# Rows to INSERT new addresses of existing customers\r\n",
+					"newAddressesToInsert = sparkDF \\\r\n",
+					".alias(\"updates\") \\\r\n",
+					".join(sellcycletgtDF.toDF().alias(\"sell_cycle\"), \"SIEBEL_SALES_STAGE_CODE\") \\\r\n",
+					".where(\"sell_cycle.SIEBEL_SALES_STAGE_CODE = true AND updates.SIEBEL_SALES_STAGE_NAME <> sell_cycle.SIEBEL_SALES_STAGE_NAME\")"
+				],
+				"attachments": null,
+				"execution_count": 62
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\r\n",
+					"import sqlalchemy\r\n",
+					"\r\n",
+					"with dbEngine.begin() as con:\r\n",
+					"    # 1. Create temp table\r\n",
+					"    con.execute(\"\"\"\r\n",
+					"        CREATE TABLE #sellcycletemp11 (\r\n",
+					"            [SIEBEL_SALES_STAGE_CODE] NVARCHAR(100)\r\n",
+					"            , [SIEBEL_SALES_STAGE_NAME] NVARCHAR(100)\r\n",
+					"            , [SSM_STEP_NO]  NVARCHAR(100)\r\n",
+					"            , [SSM_STEP_NAME] NVARCHAR(100)\r\n",
+					"            )\r\n",
+					"    \"\"\")\r\n",
+					"    # 2. Insert into temp table\r\n",
+					"    sql_insert_products = f\"INSERT INTO #sellcycletemp11 VALUES (?,?,?,?)\"\r\n",
+					"    con.execute(sql_insert_products, df.values.tolist())\r\n",
+					"\r\n",
+					"    # 3. Merge the #sellcycletemp with sellcycle\r\n",
+					"    sql_merge = \"\"\"\r\n",
+					"        MERGE DBXDH.DHTS_SELL_CYCLE  AS Target\r\n",
+					"        USING #sellcycletemp11 AS Source\r\n",
+					"            ON Source.SIEBEL_SALES_STAGE_CODE = Target.SIEBEL_SALES_STAGE_CODE\r\n",
+					"        /* new records ('right match') */\r\n",
+					"        WHEN NOT MATCHED BY Target THEN\r\n",
+					"            INSERT ([SIEBEL_SALES_STAGE_CODE], [SIEBEL_SALES_STAGE_NAME], [SSM_STEP_NO], [SSM_STEP_NAME]) \r\n",
+					"            VALUES (source.SIEBEL_SALES_STAGE_CODE, source.SIEBEL_SALES_STAGE_NAME, source.SSM_STEP_NO, source.SSM_STEP_NAME)\r\n",
+					"        /* matching records ('inner match') */\r\n",
+					"        WHEN MATCHED THEN \r\n",
+					"            UPDATE SET\r\n",
+					"            Target.SIEBEL_SALES_STAGE_NAME= Source.SIEBEL_SALES_STAGE_NAME\r\n",
+					"            , Target.SSM_STEP_NO = Source.SSM_STEP_NO\r\n",
+					"            , Target.SSM_STEP_NAME = Source.SSM_STEP_NAME\r\n",
+					"        /* deprecated records ('left match') */\r\n",
+					"        /* WHEN NOT MATCHED BY Source THEN\r\n",
+					"    DELETE */\r\n",
+					" \r\n",
+					" OUTPUT \r\n",
+					"\t$action\r\n",
+					" , inserted.*\r\n",
+					";\r\n",
+					"    \"\"\"\r\n",
+					"    con.execute(sql_merge)\r\n",
+					"\r\n",
+					"    # 4. Delete temporary table\r\n",
+					"    con.execute(\"\"\"DROP TABLE IF EXISTS #sellcycletemp5;\"\"\")\r\n",
+					"    con.execute(\"\"\"DROP TABLE IF EXISTS #sellcycletemp11;\"\"\")\r\n",
+					"\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 58
+			}
+		]
+	}
+}

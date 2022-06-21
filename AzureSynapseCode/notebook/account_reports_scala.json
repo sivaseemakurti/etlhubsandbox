@@ -1,0 +1,210 @@
+{
+	"name": "account_reports_scala",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sPoolKyn001494",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "10334c61-cb17-44b6-8520-332ad9299590"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "scala"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/eb01b8c2-e8d1-4c19-9788-5469f1f3fd10/resourceGroups/rg-kyn-001494-dev-eus-001/providers/Microsoft.Synapse/workspaces/asa-kyn-001494-dev-eus-001/bigDataPools/sPoolKyn001494",
+				"name": "sPoolKyn001494",
+				"type": "Spark",
+				"endpoint": "https://asa-kyn-001494-dev-eus-001.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sPoolKyn001494",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.1",
+				"nodeCount": 10,
+				"cores": 8,
+				"memory": 56
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import org.apache.log4j.Logger\r\n",
+					"import org.apache.spark.SparkConf\r\n",
+					"import org.apache.spark.sql.{DataFrame, SparkSession}\r\n",
+					"\r\n",
+					"import scala.io.Source\r\n",
+					"//import org.ini4j.Ini\r\n",
+					"\r\n",
+					"import java.io.File\r\n",
+					"import java.util.Properties\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"object AccountReports extends Serializable {\r\n",
+					"\r\n",
+					"  @transient lazy val logger : Logger = Logger.getLogger(getClass.getName)\r\n",
+					"\r\n",
+					"  def main(args: Array[String] ) = {\r\n",
+					"    logger.info(\"Started\")\r\n",
+					"    val spark = createSparkSession()\r\n",
+					"    val (jdbcURL, jdbcProps) = connectJDBC(spark)\r\n",
+					"    val sourceDF = sourceData(spark, jdbcURL, jdbcProps)\r\n",
+					"    sourceDF.show(5, false)\r\n",
+					"    val lookupDF = lookupData(spark, jdbcURL, jdbcProps)\r\n",
+					"    lookupDF.show(5, false)\r\n",
+					"    //val (insertDF, updateDF) = changeCapture(sourceDF, lookupDF)\r\n",
+					"    //loadTarget(insertDF, updateDF)\r\n",
+					"    spark.stop()\r\n",
+					"    logger.info(\"Stopped\")\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def createSparkSession() = {\r\n",
+					"    SparkSession.builder()\r\n",
+					"      //.master(\"local[5]\")\r\n",
+					"      //.config(getSparkAppConf())\r\n",
+					"      .getOrCreate()\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def connectJDBC(spark: SparkSession) = {\r\n",
+					"    val props = new Properties()\r\n",
+					"    //Ini data = new Ini(new File('properties.ini'))\r\n",
+					"    //val driverInfo = spark.read      .option(\"multiline\",true)      .json(\"properties.json\")\r\n",
+					"    val url = \"sql-server-pgmp-dev.database.windows.net\" //driverInfo.select(\"url\").collect()(0).mkString(\"\")\r\n",
+					"    props.put(\"url\",url)\r\n",
+					"    props.put(\"user\",\"pgmpetl\") //driverInfo.select(\"username\").collect()(0).mkString(\"\"))\r\n",
+					"    props.put(\"password\",\"Zaq1@wsxZaq1@wsx\") //driverInfo.select(\"password\").collect()(0).mkString(\"\"))\r\n",
+					"    //props.setProperty(\"driver\",driverInfo.select(\"driver\").collect()(0).mkString(\"\"))\r\n",
+					"    logger.info(\"Props - \" + props)\r\n",
+					"    (url, props)\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def sourceData(spark: SparkSession, jdbcURL: String, jdbcProps: Properties) = {\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ZAUX_ETL_EXCTN\", jdbcProps)\r\n",
+					"      .select(\"ETL_EXCTN_ID\", \"ETL_PARAM_START_TMS\", \"ETL_PARAM_END_TMS\")\r\n",
+					"      .where(\"IS_CURR_IND = 'Y'\")\r\n",
+					"      .createOrReplaceTempView(\"FIL\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ZAUX_ETL_JOBS\", jdbcProps)\r\n",
+					"      .where(\"ETL_JOB_NM = 'BALD0010_ACCTRPTS_DIM'\")\r\n",
+					"      .selectExpr(\"coalesce(max(ETL_JOB_ID), -1) as `ETL_JOB_ID`\")\r\n",
+					"      .createOrReplaceTempView(\"JOB\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.SRC_SYS_DIM\", jdbcProps)\r\n",
+					"      .where(\"SRC_SYS_CD = 'PGMP'\")\r\n",
+					"      .selectExpr(\"coalesce(max(SRC_SYS_DIM_UID), -1) as `SRC_SYS_DIM_UID`\")\r\n",
+					"      .createOrReplaceTempView(\"SYS\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"APPFUN.ACCTRPTS\", jdbcProps)\r\n",
+					"      .createOrReplaceTempView(\"ACC\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ZAUX_DATE_TRIGGERS\", jdbcProps)\r\n",
+					"      .createOrReplaceTempView(\"ZDT\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ZAUX_DELD_PROC_ID\", jdbcProps)\r\n",
+					"      .createOrReplaceTempView(\"PDEL\")\r\n",
+					"\r\n",
+					"    spark.sql(\r\n",
+					"      \"\"\"\r\n",
+					"        |Select\r\n",
+					"        |ACC.PROC_ID as ACCTRPTS_DIM_UID, ACC.PROJECT_ID as PRJCT_ID, cast(ACC.REMARKS as varchar(1024)) as ACCTRPTS_REM_TXT, \tACC.CREATED_TS as SRC_CRETD_TMS, ACC.CREATED_USERID as SRC_CRETD_USER_ID, ACC.UPDATED_TS as SRC_UPDTD_TMS, ACC.UPDATED_USERID as SRC_UPDTD_USER_ID, JOB.ETL_JOB_ID, FIL.ETL_EXCTN_ID, SYS.SRC_SYS_DIM_UID, case when PDEL.PROC_ID is null then 0 else 1 end as IS_DELETED\r\n",
+					"        |From ACC\r\n",
+					"        |inner join ZDT on ACC.PROC_ID = ZDT.PROC_ID\r\n",
+					"        |left join PDEL on ACC.PROC_ID = PDEL.PROC_ID\r\n",
+					"        |left join JOB on 1 = 1\r\n",
+					"        |left join FIL on 1 = 1\r\n",
+					"        |left join SYS on 1 = 1\r\n",
+					"        |\"\"\".stripMargin)\r\n",
+					"\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def lookupData(spark: SparkSession, jdbcURL: String, jdbcProps: Properties) = {\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ACCTRPTS_DIM\", jdbcProps)\r\n",
+					"      .createOrReplaceTempView(\"S\")\r\n",
+					"\r\n",
+					"    spark.read.jdbc(jdbcURL, \"PGMPDM.ZAUX_DATE_TRIGGERS\", jdbcProps)\r\n",
+					"      .createOrReplaceTempView(\"ZDT\")\r\n",
+					"\r\n",
+					"    spark.sql(\r\n",
+					"      \"\"\"\r\n",
+					"        |Select\r\n",
+					"        |S.ACCTRPTS_DIM_UID, S.PRJCT_ID, S.ACCTRPTS_REM_TXT, S.SRC_CRETD_TMS, S.SRC_CRETD_USER_ID, S.SRC_UPDTD_TMS, S.SRC_UPDTD_USER_ID, S.SRC_SYS_DIM_UID, S.ETL_JOB_ID\r\n",
+					"        |From S\r\n",
+					"        |inner join ZDT on S.ACCTRPTS_DIM_UID = ZDT.PROC_ID\r\n",
+					"        |order by S.ACCTRPTS_DIM_UID asc\r\n",
+					"        |\"\"\".stripMargin)\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def changeCapture(sourceDF: DataFrame, lookupDF: DataFrame) = {\r\n",
+					"    val sourceKey = sourceDF.select(\"ACCTRPTS_DIM_UID\")\r\n",
+					"    val lookupKey = lookupDF.select(\"ACCTRPTS_DIM_UID\")\r\n",
+					"    val insertDF = sourceDF.join(lookupDF, sourceDF.col(\"ACCTRPTS_DIM_UID\") =!= lookupDF.col(\"ACCTRPTS_DIM_UID\"), \"inner\")\r\n",
+					"    val updateDF = sourceDF.join(lookupDF, sourceDF.col(\"ACCTRPTS_DIM_UID\") === lookupDF.col(\"ACCTRPTS_DIM_UID\"), \"inner\")\r\n",
+					"    (insertDF,updateDF)\r\n",
+					"  }\r\n",
+					"\r\n",
+					"  def loadTarget(insertDF: DataFrame, updateDF: DataFrame) = {\r\n",
+					"    // inner join ZDT on ACC.PROC_ID = ZDT.PROC_ID\r\n",
+					"    // inner join ZDT on S.ACCTRPTS_DIM_UID = ZDT.PROC_ID\r\n",
+					"  }\r\n",
+					"\r\n",
+					"}\r\n",
+					""
+				],
+				"attachments": null,
+				"execution_count": 10
+			}
+		]
+	}
+}

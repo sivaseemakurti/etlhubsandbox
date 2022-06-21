@@ -1,0 +1,23 @@
+{
+	"name": "account_reports_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asa-kyn-001494-dev-eus-001-WorkspaceDefaultStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "output-source",
+				"fileSystem": "pgmp-data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,17 @@
+{
+	"name": "AzureSqlTable1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "asdb_etlhub_confirmed",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "DBXDH",
+			"table": "DHT_SELL_CYCLE"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

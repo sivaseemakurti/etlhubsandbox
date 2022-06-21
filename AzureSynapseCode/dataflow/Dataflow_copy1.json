@@ -1,0 +1,59 @@
+{
+	"name": "Dataflow_copy1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "Dataset",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText2",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "select1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          SIEBEL_SALES_STAGE_CODE as string,",
+				"          SIEBEL_SALES_STAGE_NAME as string,",
+				"          SSM_STEP_NO as string,",
+				"          SSM_STEP_NAME as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 select(skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          SIEBEL_SALES_STAGE_CODE as string,",
+				"          SIEBEL_SALES_STAGE_NAME as string,",
+				"          SSM_STEP_NO as string,",
+				"          SSM_STEP_NAME as string",
+				"     ),",
+				"     partitionFileNames:['sell_cycle_tgt_file.csv'],",
+				"     umask: 0777,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sink1"
+			]
+		}
+	}
+}

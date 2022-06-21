@@ -1,0 +1,17 @@
+{
+	"name": "Query data with SQL",
+	"properties": {
+		"content": {
+			"query": "\nSELECT * FROM DBXDH.DHT_CUSTOMER\n\nINSERT INTO DBXDH.DHT_CUSTOMER\n(CUSTOMER_KEY, VERSION, CUSTOMER_NO, FINANCIAL_COUNTRY_CD, GBG_ID, CUSTOMER_NAME, CURRENT_IND, EXTRACT_DT, REC_START_DT, REC_END_DT, SOURCE_SYSTEM, REC_CHECKSUM, REC_STATUS, IMG_LST_UPD_DT, IMG_CREATED_DT, DATA_IND, ACTIVE_IN_SOURCE_IND)\nVALUES(2, 1, '4514136', '897', 'GB302S62', 'SETERUS INC', 'Y', '2022-05-16 10:03:26.927' , '2022-05-16 10:03:26.927', '9999-12-31 00:00:00.000', 'BMSIW', '55cccdEDS643aaac65deb1388ada8643f5', 'I', '2022-05-16 10:03:26.927', '2022-05-16 10:03:26.927', 'LG', 'Y');\n\n\n--select CURRENT_TIMESTAMP\n--update\nupdate DBXDH.DHT_CUSTOMER\nset FINANCIAL_COUNTRY_CD='902'\nWHERE CUSTOMER_NO='9549530'\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "dsqlpoolKyn001494DevEtlHubEUS001",
+				"poolName": "dsqlpoolKyn001494DevEtlHubEUS001"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

@@ -1,0 +1,184 @@
+{
+	"name": "account_reports_source_df",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "appfun_acctrpts",
+						"type": "DatasetReference"
+					},
+					"name": "appfunAcctrpts"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_zaux_date_triggers_src",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmZauxDateTriggers"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_zaux_deld_proc",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmZauxDeldProc"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_zaux_etl_exctn",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmZauxEtlExctn"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_zaux_etl_jobs",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmZauxEtlJobs"
+				},
+				{
+					"dataset": {
+						"referenceName": "pgmpdm_src_sys_dim",
+						"type": "DatasetReference"
+					},
+					"name": "pgmpdmSrcSysDim"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "account_reports_source",
+						"type": "DatasetReference"
+					},
+					"name": "sourceAcctrpts"
+				}
+			],
+			"transformations": [
+				{
+					"name": "accIJzdt"
+				},
+				{
+					"name": "accLJpdel"
+				},
+				{
+					"name": "accLJjob"
+				},
+				{
+					"name": "accLJfil"
+				},
+				{
+					"name": "accLJsys"
+				},
+				{
+					"name": "selectSourceCols"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          PROC_ID as string,",
+				"          CNTRY as string,",
+				"          PROJECT_ID as string,",
+				"          DUE_DATE as string,",
+				"          REVISD_DUE_DATE as string,",
+				"          REMARKS as string,",
+				"          ORIG_ORG as string,",
+				"          CREATED_TS as string,",
+				"          CREATED_USERID as string,",
+				"          UPDATED_TS as string,",
+				"          UPDATED_USERID as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> appfunAcctrpts",
+				"source(output(",
+				"          PROC_ID as string,",
+				"          CRETD_DT as string,",
+				"          RCVD_DT as string,",
+				"          PRPSL_SENT_TO_CLNT_DT as string,",
+				"          PRPSL_DSPSN_DT as string,",
+				"          PRPSL_ACCPTD_DT as string,",
+				"          IMPLMTN_READY_DT as string,",
+				"          IMPLMTN_CLOSE_OUT_DT as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmZauxDateTriggers",
+				"source(output(",
+				"          PROC_ID as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmZauxDeldProc",
+				"source(output(",
+				"          ETL_EXCTN_ID as string,",
+				"          ETL_PARAM_START_TMS as string,",
+				"          ETL_PARAM_END_TMS as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmZauxEtlExctn",
+				"source(output(",
+				"          ETL_JOB_ID as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmZauxEtlJobs",
+				"source(output(",
+				"          SRC_SYS_DIM_UID as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> pgmpdmSrcSysDim",
+				"appfunAcctrpts, pgmpdmZauxDateTriggers join(appfunAcctrpts@PROC_ID == pgmpdmZauxDateTriggers@PROC_ID,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> accIJzdt",
+				"accIJzdt, pgmpdmZauxDeldProc join(appfunAcctrpts@PROC_ID == pgmpdmZauxDeldProc@PROC_ID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> accLJpdel",
+				"accLJpdel, pgmpdmZauxEtlJobs join(abs(1) == abs(1),",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'right')~> accLJjob",
+				"accLJjob, pgmpdmZauxEtlExctn join(abs(1) == abs(1),",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'right')~> accLJfil",
+				"accLJfil, pgmpdmSrcSysDim join(abs(1) == abs(1),",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'right')~> accLJsys",
+				"accLJsys select(mapColumn(",
+				"          PROC_ID = appfunAcctrpts@PROC_ID,",
+				"          PROJECT_ID,",
+				"          REMARKS,",
+				"          CREATED_TS,",
+				"          CREATED_USERID,",
+				"          UPDATED_TS,",
+				"          UPDATED_USERID,",
+				"          ETL_JOB_ID,",
+				"          ETL_EXCTN_ID,",
+				"          SRC_SYS_DIM_UID",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectSourceCols",
+				"selectSourceCols sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> sourceAcctrpts"
+			]
+		}
+	}
+}
